@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# Run the firsttime script once, from OpenBSD's /etc/rc
+first=/etc/rc.firsttime
+if [ -f $first ]; then
+  mv $first $first.run
+  . $first.run
+  rm -f $first.run
+fi

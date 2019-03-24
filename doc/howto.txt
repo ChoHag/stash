@@ -1,0 +1,404 @@
+How to get started using stash to deploy a set of servers.
+
+Howto version 1.
+
+For the impatient, skip down to "Getting on the internet".
+
+First download & install, etc.
+
+  $ git clone http://jtan.org/~chohag/stash.git ~/src/stash
+  $ cd ~/src/stash
+  $ vi *.* */*.* */*/*.* # Verify that the source is safe
+  $ make install
+
+This will install stash into /usr/local/bin with shared files in
+/usr/local/share/stash.
+
+Before creating a stash repository you need a name. Yes it's the
+hardest problem but you need to solve it and you need to solve it
+first. For the purposes of this document the organisation's name is
+The Fleurs, with apologies to all French speakers everywhere.
+
+With that critical situation resolved you will also need:
+
+  * Somewhere to run servers, hereinafter refered to as 'the/a
+    hypervisor' or 'hvm'. Note that in the case of hypervisors such as
+    aws which restrict access to the server's console there are two
+    hypervisors, the other being used to build the first stash
+    image. I use vmd on an OpenBSD instance and so will this document.
+
+  * A budget with which to make decisions on the size of servers'
+    drives, memory, quantity, operating system, etc.
+
+  * A domain name in the DNS. You can make up your own TLD if you want
+    because there's literally nothing stopping you.
+
+With that create a stash repository.
+
+  $ mkdir -p ~/src/fleurs
+  $ cd ~/src/fleurs
+  $ git init
+  $ echo domain=fleurs.com > org.sh
+  $ git add org.sh
+
+And, for round 1, make a testing environment and use it by default:
+
+  $ mkenv -N env.test # The -N denotes 'no password' on the secret key
+  $ echo default_environment=test >> org.sh
+
+This creates the directory 'env.test' with the file 'env.sh' inside it
+describing how to sign and verify stash archives in the new 'test'
+environment. The private signing key will be created in ~/.stash.
+
+The environment name (here 'env.test') must be the the full path to a
+new directory named 'env.something' or the exact string
+'env.something' (which will create the environment in the current
+directory).
+
+                      nb. stash does not manage source code
+                      repositories at all and commands to do so will
+                      no longer be included in this document. You are
+                      expected to manage revision control yourself.
+
+Next, describe how your test environment works by adding to it's
+env.sh. Primarily describe how to connect to the hvm and any default
+options to configure the installer. stash_key, stash_pubkey and env
+have already been configured by mkenv: Do not change them! Other
+interesting settings include:
+
+  hvm_*:
+    Various options to configure access to the hypervisor in use. See
+    it's implementation's documentation. Defaults?
+
+  proxy and proxy_runtime:
+    proxy to configure an http proxy to use during installation and at
+    runtime, proxy_runtime to configure a different proxy for runtime
+    (latter unimplemented). The default is none of either.
+
+  secdir:
+    Where to store the secret keys when creating environments or
+    instances. The default is $HOME/.stash.
+
+  sign:
+    How to sign stash archives. The default on OpenBSD is signify.
+
+  stash_from:
+    How new servers will get their stash archive and identity.
+
+  iso_root(key|pw):
+    An SSH key to install in /root/.ssh/authorized keys or password to
+    set during a server's installation. The default is to restrict all
+    access to the root account.
+
+  iso_source:
+    The filesystem location of an upstream unix distribution's
+    installer. There is no default.
+
+  os_fslayout:
+    The default hard drive layout for new servers. The default is 'default'.
+
+  os_upstream:
+    The URI to assign to a server's distribution's package
+    repository. The default depends on the installer.
+
+An exhaustive list is included in libstash.sh.
+
+I work on an OpenBSD laptop, which comes with vmd, so I use that and
+with some additional defaults that results in this environment:
+
+  $ cat env.test/env.sh
+  stash_pubkey="env.test/test-0-stash.pub"
+  stash_key="/home/me/.stash/test-0-stash.sec"
+  env="test"
+  hvm=vmd
+  hvm_dir=/srv/vm/fleurs
+  iso_source=/home/me/download/cd64.iso
+  os_fslayout=simple
+  os_size=6g
+  sign=signify
+  stash_from=usb
+
+Create a base image with your public key in root's authorized_keys
+file so that starting a new VM is faster and you can always log into
+it to work:
+
+  $ mkclone -K ~/.ssh/id_ed25519.pub -n base ~/src/fleurs
+
+                                      nb. ~/src/fleurs can be replaced
+                                      with a single '.' or $PWD but is
+                                      written out in full for clarity.
+
+You may also (or instead) use the -R option which installs a password
+for the root account if you prefer to work on the console.
+
+Note that this gives a single person access to root on _all_ servers
+in the environment which are built from this base which is usually a
+bad idea in environments that aren't dev or test.
+
+Build a new instance by first cloning the drive which mkclone created:
+
+  $ doas vmctl create qcow:/srv/vm/fleurs/test-devbox.0 -b /srv/vm/fleurs/test-base.0
+  $ mkinstance -n devbox -r nothing ~/src/fleurs
+
+On OpenBSD this will end with something like "vmctl: started vm 5
+successfully, tty /dev/ttyp3" which means the IP address is
+100.64.5.3, so log in to it:
+
+  $ ssh root@100.64.5.3
+
+There's no trust relationship yet between you and the new server so
+ssh will prompt to verify its fingerprint. At this stage the VM is on
+localhost and the network exists entirely within the local kernel's,
+and it's is in a test environment, so there's no chance of a MITM
+attack and no need to worry about one. The prompt can be skipped now.
+
+You can test that the box is doing nothing correctly and see a report
+from the first-boot execution of stash/run in /etc/stash/type:
+
+  $ cat /etc/stash/type
+  start="Mon Apr  1 10:49:42 UTC 2019"
+  finish="Mon Apr  1 10:50:45 UTC 2019"
+  stash="/root/stash"
+  fqdn="devbox.fleurs.com"
+  role="nothing"
+  environment="test"
+  loaded_roles="config keys firewall network supplement pkg daemon date log users cron tls crash nothing environment"
+  config_files="firewall-:/etc/pf.conf +:/etc/installurl" # From role config
+  keys_public="keys:/etc/signify/test-0-stash.pub" # From role keys
+
+There will also be a log recorded by syslog in /var/log.
+
+Building the first server
+-------------------------
+
+Didn't we just do that? Well yes but as you see it doesn't do anything
+and there's no record of it anywhere. The purpose of that machine is
+twofold: to demonstrate the process of creating a new server instance
+from the first stage and to be a development platform.
+
+At this stage the idea is to write a role for each type of server
+which configures it. In effect, write whatever commands into the new
+server with which it would normally be configured and copy each one
+into a 'role_apply' function in ~/src/fleurs/role.peria/role.sh.
+
+Peria is a mythical application that The Fleurs are building for
+whatever in[s]ane startup reason which makes almost no difference to
+us. For the purpose of this howto I'll configure squid because then
+you've got yourself a nice caching proxy sitting there making future
+development faster. A peria therefore is a type of cephalopod.
+
+First the package:
+
+  # pkg_add squid
+
+The squid port's configuration is already sane so there's no need to
+change it, only append the directive to enable caching:
+
+  # echo 'cache_dir ufs /var/squid/cache 4096 16 256' >> /etc/squid/squid.conf
+  # squid -z
+
+And activate squid:
+
+  # rcctl enable squid
+  # rcctl start squid
+  # logout
+
+That would result in a role.peria/role.sh which looks like this (note
+that stash/run reboots when it's complete for the first time so
+there's no need to start the daemon in the role):
+
+  #!sh
+
+  # Documentation goes here
+
+  role_apply() {
+    set -e
+    pkg_add squid
+    echo 'cache_dir ufs /var/squid/cache 4096 16 256' >> /etc/squid/squid.conf
+    /usr/local/sbin/squid -z
+    rcctl enable squid
+  }
+
+But to take the most advantage of stash it would actually be written like this:
+
+  #!sh
+
+  # Documentation goes here
+
+  role_settings() { stash pkg need squid; } # nb. 'need' in settings, 'install' in apply.
+
+  role_apply() {
+    set -e
+    stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
+    on_firsttime && /usr/local/sbin/squid -z
+    stash daemon enable squid
+  }
+
+Define a subnet and server in env.test/env.sh:
+
+  servers="firefly"
+  subnets="backend"
+  subnet_backend_ipv4=10.0.1.0/24
+  server_firefly_subnet=backend
+  server_firefly_ipv4_backend=10.0.1.1
+
+Or if you have a load balancer and want a redundant pair:
+
+  servers="firefly"
+  subnets="backend"
+  subnet_backend_ipv4=10.0.1.0/24
+  server_firefly_subnet=backend
+  server_firefly_0_ipv4_backend=10.0.1.10
+  server_firefly_1_ipv4_backend=10.0.1.11
+
+Also and a role for this type of server:
+
+  $ cat role.firefly/role.sh
+  role_settings() { stash depends peria; }
+  role_apply() {
+    stash config template sht.hostname.simple /etc/hostname.vio0
+  }
+
+  $ cat role.firefly/sht.hostname.simple
+  inet $(myipv4 datum) $(mynm4 datum)
+
+And launch:
+
+  $ doas vmctl create qcow:/srv/vm/fleurs/test-firefly.0 -b /srv/vm/fleurs/test-base.0
+  $ mkinstance -n firefly -r firefly ~/src/fleurs
+
+Or the pair:
+
+  $ doas vmctl create qcow:/srv/vm/fleurs/test-firefly-0.0 -b /srv/vm/fleurs/test-base.0
+  $ doas vmctl create qcow:/srv/vm/fleurs/test-firefly-1.0 -b /srv/vm/fleurs/test-base.0
+  $ mkinstance -n firefly -i 0 -r firefly ~/src/fleurs
+  $ mkinstance -n firefly -i 1 -r firefly ~/src/fleurs
+
+For the time being role and name are both required until I work out
+which one should use the other as its default.
+
+Test that the new server functions as expected and, if so, it's time
+to start production.
+
+Getting on the internet
+-----------------------
+
+The application is ready and tested. To do this make an environment
+called prod (or production if you like typing) and split apart the
+test environment's settings to define what differs between the two.
+
+But first a review:
+
+  $ find ~/src/fleurs -type f | grep -v ~$ | while read f; do echo $f:; grep . $f; echo; done
+
+    /home/me/src/fleurs/role.peria/role.sh:
+      #!sh
+      # Documentation goes here
+      role_settings() { stash pkg need squid; }
+      role_apply() {
+        set -e
+        stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
+        on_firsttime && /usr/local/sbin/squid -z
+        stash daemon enable squid
+      }
+
+    /home/me/src/fleurs/env.test/env.test-0-stash.pub:
+      untrusted comment: test-0 stash public key
+      RWQ+PlJeI1nrHvxSumKpttSs+AUF+3+lu0AVzbgIGqV3SAtnUJb03tb1
+
+    /home/me/src/fleurs/env.test/env.sh:
+      stash_pubkey="env.test/test-0-stash.pub"
+      stash_key="/home/me/.stash/test-0-stash.sec"
+      env="test"
+      hvm=vmd
+      hvm_dir=/srv/vm/fleurs
+      iso_source=/home/me/download/cd64.iso
+      os_fslayout=simple
+      os_size=6g
+      sign=signify
+      stash_from=usb
+      servers="firefly"
+      subnets="backend"
+      subnet_backend_ipv4=10.0.1.0/24
+      server_firefly_subnet=backend
+      server_firefly_ipv4_backend=10.0.1.1
+
+    /home/me/src/fleurs/org.sh:
+      domain=fleurs.com
+      default_environment=test
+
+    /home/me/src/fleurs/role.firefly/sht.hostname.simple:
+      inet $(myipv4) $(mynm4)
+
+    /home/me/src/fleurs/role.firefly/role.sh:
+      #!sh
+      role_settings() { role depends peria; }
+      role_apply() {
+        set -e
+        stash config template sht.hostname.simple /etc/hostname.vio0
+      }
+
+There is also a private key in /home/me/.stash/test-0-stash.sec
+
+First create the production environment. You don't want new production
+machines without authorisation so omit the -N to create a key
+encrypted with a password:
+
+  $ mkenv env.prod
+
+Rearrange env.test/env.sh and org.sh, while duplicating (with changes)
+the appropriate settings in env.prod/env.sh so that default values are overriden
+in a way that makes sense:
+
+  org.sh:
+    domain=fleurs.com
+    default_environment=test
+    hvm=vmd
+    hvm_dir=/srv/vm/fleurs
+    iso_source=/home/me/download/cd64.iso
+    os_size=20g
+    sign=signify
+    stash_from=usb
+    servers="firefly"
+    subnets="backend"
+    server_firefly_subnet=backend
+
+  env.test/env.sh:
+    stash_pubkey="env.test/test-0-stash.pub"
+    stash_key="/home/me/.stash/test-0-stash.sec"
+    env="test"
+    os_fslayout=simple
+    os_size=6g
+    subnet_backend_ipv4=10.0.1.0/24
+    server_firefly_ipv4_backend=10.0.1.1
+
+  env.prod/env.sh:
+    stash_pubkey="env.prod/prod-0-stash.pub"
+    stash_key="/home/me/.stash/prod-0-stash.sec"
+    env="prod"
+    hvm_remote=hvm.clown-provider.com
+    os_fslayout=minimal
+    subnet_backend_ipv4=192.168.42.0/24
+    server_firefly_ipv4_backend=192.168.42.1
+
+Here 192.168.42.0 is simulating whatever real public IP range is
+available at Clown Provider.
+
+You can now deploy the production environment, this time without a key
+or password configured in the root account.
+
+  $ mkclone -e prod -n base ~/src/fleurs
+  $ mkinstance -e prod -n firefly -r firefly ~/src/fleurs
+
+You can now write roles which configure servers in different ways and
+start more servers. How they are organised is not handled by stash and
+the subnet* and server* variables listed above are not required.
+
+Stash includes a small set of roles to perform some routine tasks,
+some of which have been demonstrated above. They are documented in
+full in roles.txt.
+
+Finally, the roles which come with stash are written to be idempotent
+and facilitate writing idempotent roles yourself. In this way
+/root/stash can be regularly updated and stash/run executed to make
+any necessary changes. The updates are appended to /etc/stash/type.

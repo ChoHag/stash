@@ -1,0 +1,37 @@
+# Questions with defaults do not need an entry in this answer file;
+# they're included here anyway (commented out) so that readers will be
+# aware what the value is at this time (6.3).
+
+# Terminal type = vt220
+System hostname = changemehost
+# Which network interface do you wish to configure = vio0
+# IPv4 address for vio0 = dhcp
+# IPv6 address for vio0 = none
+# Which network interface do you wish to configure = done
+# This isn't asked by the autoinstaller and is fixed in stage 2
+DNS domain name = changemedomain
+Password for root account = *************
+Public ssh key for root account = none
+# Start sshd(8) by default = yes
+Do you expect to run the X Window System = no
+# Change the default console to com0 = yes
+Which speed should com0 use = 115200
+# Setup a user = no
+Allow root ssh login = prohibit-password
+What timezone are you in = UTC
+Time appears wrong = yes
+# Which disk is the root disk = sd0
+Use (W)hole disk MBR, whole disk (G)PT, (O)penBSD area or (E)dit = whole
+Use (W)hole disk MBR, whole disk (G)PT or (E)dit = whole
+URL to autopartitioning template for disklabel = file:/disklabel.template
+Location of sets = http
+HTTP proxy URL = none
+HTTP Server = cloudflare.cdn.openbsd.org
+# Server directory = pub/OpenBSD/6.4/amd64
+Unable to connect using https. Use http instead = yes
+#     [X] bsd           [X] comp64.tgz    [X] xbase64.tgz   [X] xserv64.tgz
+#     [X] bsd.rd        [X] man64.tgz     [X] xshare64.tgz
+#     [X] base64.tgz    [X] game64.tgz    [X] xfont64.tgz
+Set name(s) = +*
+# Set name(s) = done
+# Location of sets = done

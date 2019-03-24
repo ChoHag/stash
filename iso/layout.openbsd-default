@@ -1,0 +1,14 @@
+# Minimum 18GB
+
+0:
+/             512M-1G  5
+swap          512M-1G 10
+/altroot      512M-1G  5
+/usr          2G
+/tmp          1G
+/var          1G-2G   13
+/usr/local    2G-6G   15
+/usr/src      4G       0 -i 1
+/usr/ports    2G       0 -i 1
+/usr/obj      3G
+/home         1G-*    52

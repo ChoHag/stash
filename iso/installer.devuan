@@ -1,0 +1,84 @@
+# God this is a mess. So this worked a week or so ago before stash was
+# this complete so I don't know what worked and what didn't and what
+# no longer does.
+#
+#
+# This file can't have any blank lines!
+# Fields are seperated by TAB, some lines have a trailing TAB
+#
+#
+# partman-auto	partman-auto/select_disk	select	/var/lib/partman/devices/=dev=vda
+# tzdata	tzdata/Zones/Europe	select	London
+## packages
+## pwd-auth
+#?bootstrap-base	base-installer/kernel/image	select	linux-image-amd64
+##clock-setup	clock-setup/ntp	boolean	true
+##clock-setup	clock-setup/utc	boolean	true
+##d-i	debconf/language	string	en
+#Xd-i	debian-installer/country	string	GB
+#Xd-i	debian-installer/language	string	en
+#Xd-i	debian-installer/locale	select	C
+##d-i	keyboard-configuration/layoutcode	string	us
+##d-i	keyboard-configuration/variant	select	English (US)
+d-i	keyboard-configuration/xkb-keymap	select	us
+d-i	localechooser/languagelist	select	C
+popularity-contest	popularity-contest/participate	boolean	false
+d-i	tasksel/first	multiselect	SSH server
+dash	dash/sh	boolean	true
+#?
+#Xgrub-installer	grub-installer/choose_bootdev	select	/dev/vda
+#Xgrub-pc	grub-pc/install_devices	multiselect	/dev/vda
+##keyboard-configuration	keyboard-configuration/layoutcode	string	us
+##keyboard-configuration	keyboard-configuration/variant	select	English (US)
+##keyboard-configuration	keyboard-configuration/xkb-keymap	select	us
+netcfg	netcfg/get_hostname	string	changemehost
+netcfg	netcfg/get_domain	string	changemedomain
+#Xopenssh-server	openssh-server/permit-root-login	boolean	true
+tasksel	tasksel/first	multiselect	ssh-server
+#Xtzdata	tzdata/Zones/Etc	select	UTC
+#
+#
+apt-cdrom-setup	apt-setup/cdrom/set-first	boolean	false
+#
+#
+d-i	grub-installer/only_debian	boolean	true
+# d-i	finish-install/reboot_in_progress	note
+d-i	debian-installer/exit/poweroff	boolean	true
+d-i	cdrom-detect/eject	boolean	false
+# Device for boot loader installation:
+#
+d-i	debian-installer/language	string	en
+d-i	debian-installer/country	string	GB
+d-i	debian-installer/locale	string	C.UTF-8
+#
+d-i	mirror/country	string	manual
+d-i	mirror/http/hostname	string	deb.devuan.org
+d-i	mirror/http/directory	string	/merged
+d-i	mirror/http/proxy	string	
+#
+d-i	passwd/make-user	boolean	false
+d-i	passwd/root-password-crypted	password	*************
+#
+d-i	clock-setup/utc	boolean	true
+d-i	clock-setup/ntp	boolean	true
+d-i	time/zone	string	UTC
+#
+d-i	base-installer/install-recommends	boolean	false
+d-i	base-installer/kernel/image	string	linux-image-amd64
+#
+d-i	apt-setup/services-select	multiselect	security,	updates
+d-i	pkgsel/include	string	
+# Whether to upgrade packages after debootstrap.
+# Allowed values: none, safe-upgrade, full-upgrade
+d-i	pkgsel/upgrade	select	full-upgrade
+#
+d-i	partman-auto/init_automatically_partition	select	biggest_free
+d-i	partman/choose_partition	select	Finish partitioning and write changes to disk
+#Select disk to partition:
+#Partitioning scheme:
+#Write the changes to disks?
+#
+d-i	partman/early_command	string	\
+  debconf-set partman-auto/disk "$(list-devices disk | head -n1)"
+d-i	preseed/early_command	string	/mkautoiso-prehook.sh
+d-i	preseed/late_command	string	/mkautoiso-posthook.sh

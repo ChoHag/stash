@@ -1,0 +1,98 @@
+Stash
+
+It's possible to go immediately to mkvm and launch a server (see
+mkvm(1)) but in most cases after installing stash (make
+PREFIX=/path/to/stash install) some things should be configured first.
+
+Create private (eg. organisation) repository ~/repo
+
+  $ mkdir ~/repo
+  $ echo domain=example.com > ~/repo/org.sh # 99% required
+  $ cd ~/repo && git init # git maintenance hereby assumed
+
+Create environment
+
+  $ mkenv [~/repo/]env.dev # Creates a signing key in ~/.stash/repo-dev-*
+
+    Sources ~/repo/org.sh; signify on OpenBSD, probably gpg on linux.
+
+Configure site/repository & environment (eg. hvm, os, ssh)
+
+  $ cp ~/.ssh/id_ed25519.pub ~/repo/role.keys/pub.ssh.ca # etc.
+  $ vi ~/repo/org.sh
+  $ vi ~/repo/env.dev/env.sh
+  ... set variables such as os_*, hvm* (already are env domain stash_(pub)key)
+  ... Documented at the top of libstash.sh for now; beware namespaces
+
+Create roles
+
+  $ mkdir ~/repo/role.mything
+  $ vi ~/repo/role.mything/role.sh
+  ... define role_settings, role_apply; rolevar in either, role_method/_filetype in _settings
+  ... (TODO-ish) role depends in _settings
+
+Launch server
+
+  $ mkvm -I ~/Downlad/Installer.iso -n foo -r mything [-i 0] ~/repo ...
+
+    Performs the following two steps by running role_apply in
+    /root/stash/role.mything/role.sh after doing each dependency first
+
+    Might ask for signing password.
+
+    Might require local root (depends on local and target operating
+    systems; usually only to loopback-mount).
+
+Alternatively:
+
+Create disc image
+
+  $ mkclone -I ~/Download/Installer.iso [~/repo ...] # incl. options for disc size etc.
+
+    Creates an auto-install out of a downloaded ISO & boots a VM to
+    run it once, at this point it can be snapshotted, copied, uploaded
+    to AWS as an AMI, etc. Can be easily adapted to chroots, jails,
+    dockers or whetever the nom du jour is today.
+
+    Includes options for stash-source, platform, disc size, proxies, etc.
+
+    Might require local root.
+
+Then create an instance by booting it with a stash archive (ie. a
+collection of roles and an environment definition)
+
+  $ mkinstance -f usb -s signify -n foo -r mything [-i 0] ~/repo ...
+
+    Includes options for stash-source, memory, naming, maybe extra discs?
+
+    Might ask for signing password.
+
+
+Other documentation:
+
+doc/how-stash-works.txt: How stash works.
+
+doc/howto.txt:           A walkthrough which configures a stashed
+                         organisation for the first time.
+
+doc/initial-setup.txt:   A guide to the options which are likely to be
+                         configured when setting up stash for the
+                         first time for real use.
+
+doc/namespace.txt:       Variables used by stash must be named correctly;
+                         this describes how to do so.
+
+doc/roles.txt:           What stash means by 'roles' (in short: a
+                         function in a bourne shell with an associated
+                         namespace), how to use and write them and
+                         documentation for the roles that come with
+                         stash.
+
+Manpages:                Eventually.
+
+PLATFORMS:               Notes on the build, target and host platforms
+                         supported by stash.
+
+SERVERLESS:              How to make a serverless server in 9 easy steps. Or,
+                         notes made while I'm figuring out what the hell I'm
+                         doing.

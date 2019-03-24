@@ -1,0 +1,8 @@
+# Minimum 6GB
+
+0:
+/             512M
+swap          1G
+/usr          2G
+/tmp          1G
+/var          1G-*

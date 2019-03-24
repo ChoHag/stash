@@ -1,0 +1,204 @@
+How stash works
+---------------
+
+Stash launches new servers and ensures that they run a configuration
+script the first time they boot.
+
+In addition to mkvm, mkclone and mkinstance there are two internal
+commands, mkautoiso and mkstash. Most of these tools run
+independently, eg. mkautoiso can execute any script in the
+post-install or first-time phases, not only stash.
+
+First:
+
+mkautoiso takes an upstream unix distribution's installer ISO and
+adapts it to AUTOMATICALLY AND WITHOUT WARNING FORMAT ALL DRIVES and
+install the distribution. A few critical things are tweaked such as
+the console, stored random seed, ssh, etc.
+
+mkautoiso takes an upstream ISO and spits out another ISO. You can
+then launch a server which boots from that ISO (or a CD burned from
+it) and that machine will eventually shut down, configured as a unix
+server which will run a script the first time it's booted. In most
+cases the script will be /post/stash/run, /root/stash having been
+created during the installer's post-install phase.
+
+Second:
+
+mkstash creates an UNSIGNED gzipped tar archive which includes the
+scripts and data files in /root/stash which configure a server and git
+it its identity. When used by mkclone, mkstash is instructed to create
+a minified archive which just has enough code in it to fetch, verify
+and extract a full archive.
+
+Alternatively mkvm embeds the full archive in the ISO and the server
+is ready to boot as soon as the installer has finished. In this case
+it does not need to be verified so it should be possible to run mkvm
+without creating a signing key or environment.
+
+stash/run halts the server when finished to indicate success and
+mkvm/mkclone can start it again ready for service.
+
+When a server is launched by mkclone some activities carried out
+during the post-install are repeated during the first-time to ensure
+the server remains unique, like resetting disc IDs and private keys.
+
+The only non-unique aspect of a server when it begins the first-time
+proper is the hostname, which will be changemehost.changemedomain.
+
+Summary:
+
+In essence stash is divided into the two independent stages "build new
+simple server" and "execute a file the first time that server boots".
+
+The first time the server boots after the operating system has been
+installed it then executes /root/stash/run. This script loads the
+environment from libstash.sh and after a few steps possibly downloads
+and verifies further signed instructions in the form of roles.
+
+Roles
+-----
+
+If you squint hard enough, roles in stash look a bit like roles in the
+perls or javascript (http://p3rl.org/Moose::Manual::Roles), as applied
+to server maintenance.
+
+A role is a directory named role.something containing at least the
+file role.sh.
+
+This file will not be executed but sourced into the running
+environment. It must not do anything* active when sourced but define
+two functions, named role_settings and role_apply.
+
+[*] Not quite true, which is where the squinting comes in; see below.
+
+role_settings is used to indicate which platform is supported, set
+default values to variables in that role's namespace and other
+internal housekeeping tasks.
+
+role_apply runs to active change the server in some way. Stash
+provides functions to make simple changes and record activities to
+provide a final report.
+
+In order to get something that looks vaguely like roles, there is
+copy_function(), so named because that's what it does but it would be
+best thought of as being 'rename'. Using this, a role implementation's
+role.sh can, before defining the two functions, rename any existing
+role_settings or role_apply function and call them at the appropriate
+time.
+
+This allows something that almost looks like inheritence due to how
+the final stash archive is put together.
+
+mkstash is ultimately called with a list of directories, provided on
+the command line. The first of these is slightly special as it's
+treated as the main repository and some files are looked for only
+there.
+
+A temporary directory is created and then for each of these
+directories in order, followed by the stash library and core:
+
+  * If the file org.sh exists in the repository, it's copied as-is.
+  * If the file run.sh exists and hasn'd been copied yet, it's copied
+    as 'run' and made executable.
+  * If there are directories named env.* or role.*:
+    * For each file within them, those which do not exist yet are
+      copied unless:
+      * The directory is named role.* and the file role.sh
+      * The file is named 'complete'.
+
+If the file is named 'complete' it's not copied and that role or
+environment is not searched in subsequent stash source directories.
+
+If the file is named role.sh, it's _prepended_ to any existing
+role.sh. This effectively gives role_settings and role_apply the
+opportunity to encapsulate the functionality of base implementations
+stored in a library of stash source directories.
+
+As an example, role.sh when finally executed on the server may look
+like this:
+
+  #!sh # role.sh from ~/stash/lib/common/role.mything
+  role_apply() { echo 42 > /my/thing; }
+
+  #!sh # role.sh from ~/stash/lib/company/role.mything
+  copy_function role_apply mything__role_apply
+  role_apply() {
+    mything__role_apply "$@"
+    ln /my/thing /your/thing
+  }
+
+Stash will run the second definition of role_apply, and that will run
+the first (no arguments are sent to role_apply but that could change
+so they are passed along).
+
+For more details about roles in stash, see libstash-role.sh.
+
+stash/run
+---------
+
+When stash/run starts it first loads a small set of roles which are
+only able to fetch and verify a full stash archive. It then
+effectively reloads and starts over but this time goes on to load
+other roles. Mostly these provide core functionality such as managing
+users, networks, daemons, etc.
+
+The penultimate role is the particular role which specialises the
+server to its purpose. The final role applies final adjustments
+specific to the environment the server is running in such as reducing
+resource limits.
+
+Roles are loaded using the 'stash role' command, which sources the
+role.sh and runs role_settings. Roles may call 'role depends' to
+declare that they depend on another role having been applied first, in
+which case the process repeats.
+
+When all roles have been loaded, 'stash /file/name' is used to apply
+them all in turn by running their role_apply function then saving a
+report of the result to the file named.
+
+Note that in the current implementation this works by repeatedly
+re-sourcing the role.sh file which is why it's important that it takes
+no action outside the two named functions.
+
+stash/run, found in src/run.sh or $LIBSTASH/run.sh after installation,
+is actually quite short so serves as its own guide for how the server
+will finally get set up.
+
+Further information about how to write roles and features provided by
+stash are available in my head because I haven't written them out yet
+and this file's quite long enough.
+
+What?
+-----
+
+Take this file structure:
+
+~/repo/role.mything/role.sh:
+  role_apply() {
+    stash pkg install mysoftware
+    stash config copy my.config /etc/myapp/my.cfg
+    stash daemon enable mysoftware
+  }
+
+~/repo/role.mything/my.config:
+  some: thing
+
+Run this command:
+
+  $ mkvm -I ~/upstream.iso -n foo -r mything ~/repo
+
+In a few minutes a server will be running which has installed from
+upstream.iso and run the role_apply script in role.mything/role.sh,
+which installed (using the system package manager) 'mysoftware',
+copied the 'my.config' file to /etc/myapp/my.cfg (making /etc/myapp on
+the way) and configured the system init daemon to start 'mysoftware'
+when the server boots.
+
+What remains is to configure the organisation & environments, and to
+write roles. See initial-setup.txt for a guide to the configuration
+and sh(1) for a guide to writing roles.
+
+namespace.txt will be extremely useful to read because stash and roles
+make heavy use of shell variables so naming them correctly is
+important to ensure no roles conflict in their use.

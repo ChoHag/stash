@@ -1,0 +1,18 @@
+Log notice syslog
+
+RunAsDaemon 1
+DataDirectory /var/tor
+User _tor
+
+$( for _p in $tor_dns_listen;           do echo DNSPort $_p; done )
+$( for _p in $tor_relay_listen;         do echo ORPort $_p; done )
+$( for _p in $tor_socks_listen;         do echo SocksPort $_p; done )
+$( for _p in $tor_trans_listen;         do echo TransPort $_p; done )
+
+$( sht_include "$tor_socks_acl" )
+
+$( [ -n "$tor_trans_listen" ]           && echo %include /etc/tor/torrc.divert )
+$( [ -n "$tor_relay_listen" ]           && echo %include /etc/tor/torrc.relay )
+$( [ -n "$tor_relay_outbound_address" ] && echo OutboundBindAddress $tor_relay_outbound_address )
+
+$( for _f in $tor_config_append;        do echo %include $_f; done )

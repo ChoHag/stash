@@ -1,0 +1,8 @@
+Primarily-targeted platform is OpenBSD.
+
+Next in line is Devuan, because fuck systemd, then CentOS.
+
+After that, other BSDs, linux and misc unix as I can be arsed.
+
+The code included to build Devuan and CentOS servers is very old work
+and has not been tested with this version of stash.

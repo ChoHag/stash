@@ -1,0 +1,1 @@
+I'm not writing this yet. See sh(1) and libstash-role.sh.

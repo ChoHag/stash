@@ -1,0 +1,287 @@
+How to make a serverless server in 9 easy steps:
+
+get installer cd
+get computer
+boot cd
+answer questions
+format
+os installs
+create users
+install software
+configure backup
+
+A word of warning: Stash creates CDs which will DESTROY YOUR COMPUTER,
+replacing it with itself. Do not leave CDs or ISO files lying around
+or you will almost certainly ruin someone's day and that person will
+almost certainly be you. All default filenames chosen by stash will
+include the text 'auto-reformat'.
+
+Although formatting and OS extraction (including writing the boot
+sector) can be done directly from another system, stash instead
+manipulates an installer ISO to run noninteractively. The main reason
+for this is so that the same process can be used to create virtual
+machines and real servers and that their initial configuration happens
+in an environment identical to that which an administrator would
+operate manually.
+
+Also we have VMs now so it's easy.
+
+In order to create an ISO file which can boot to a fully working,
+active server we need to break down the manual steps and reorder them
+a little. For one, everything needs to be performed before 'boot'.
+
+First a little aside to define done.
+
+The end result is a running server, virtual or otherwise. In the
+middle there will be an ISO which turns an empty hard drive (or set of
+same) into a working network server which can then be made live
+(ie. plugged into a machine/hvm and turned on). This means a few
+things need to come preconfigured.
+
+In addition configuring the server when the installer has finished is
+going to involve running some other script or tool and that's going to
+expect a particular environment.
+
+To summarise then:
+
+Stash will create an ISO file which when booted will format one or
+more hard drives and install and then configure a variant of unix or
+linux on them:
+
+  ( Items marked with a hyphen (-) can be set with )
+  ( command-line arguments or configuration files. )
+
+- * Default hostname will be changemehost.changemedomain
+ -* Default network configuration will be single ipv4 dhcp with ipv6 disabled (only -6)
+  * root will not have a password but ssh will be configured to permit root login
+- * An optional script will execute the first time the server is booted
+- * Optionally a ssh certificate can be installed in /etc/ssh/ssh_host_*_cert
+- * Optionally a ssh key can be installed in /root/.ssh/authorized_keys
+  * The console will be directed to the first serial port at 115200 bps (8n)
+  * No extra users will be configured
+  * The timezone will be set to UTC
+  * Where possible the locale will be, in descending order of preference,
+    C, en, en_GB, en_US. In all cases .UTF-8 is tried first
+- * Optionally a http proxy address can be configured (differently in phases)
+- * Where possible a default or optional package repository will be configured
+- * A (mostly) stripped down set of software will be installed. This will include:
+    (I can't believe I have to list some of these explicitly but they weren't somewhere)
+    # standard posixish & shell utilities (ie. most of /*bin and some of /usr/*bin)
+    # bc
+    # ed
+    # ifconfig
+    # iotop
+    # less
+    # logrotate
+    # man
+    # netcat (openbsd where available)
+    # tcpdump
+    # telnet
+    # tmux
+    # vi
+  * nano will be removed
+
+Now on to the steps. To begin I'll describe each step and the problems
+which arise from automating it.
+
+= get installer cd =
+
+Buy or download. Downloaded files should be cryptographically
+verified. This step is mostly out of the purview of stash so it's a
+good opportunity to mention that encryption and verification play a
+major part in stash so you should create an SSH keypair to use as a
+certificate authority (although one is not required to make an
+installer iso). You'll also need a code repository to keep that and
+other public keys or certificates along with server configuration
+code, so create one.
+
+= get computer =
+
+Although stash can't get you a computer or even use one, it can start
+and stop VMs and can be configured with a hypervisor to manage the
+final stages of turning the ISO into a running server.
+
+Taking advantage of this stash has broken up the steps such that an
+image file can be created after the OS is installed (which takes a
+long time) and later cloned into new VMs (which doesn't) which are
+each given a (signed) package of instructions to complete the process
+(which packages can grow quite large).
+
+= boot cd =
+
+As mentioned, this has to come last. It's not so hard to automate but
+ISOs or images (or scripts) may need to be transferred over the
+network at various points, which requires bandwidth and authorisation.
+
+= answer questions =
+
+So far every platform I've seen has somewhere the ability to inject a
+file answering the questions the installer would otherwise
+ask. Naturally in OpenBSD this is called the answers file but other
+platforms have their own names such as preseed or kickstart.
+
+Unfortunately getting the file to the installer is not so easy. Most
+platforms expect that if you're booting from a CD you'll provide the
+answers file some other way such as a URL at the boot prompt. It turns
+out CDs are made of really cheap plastic and easy to write to but the
+operating system vendors never really caught on.
+
+This file is hand-crafted for each platform and comes with stash,
+usually in /usr/local/share/stash/answers. It will usually need to
+have changes made to it to satisfy the needs of the other steps (and
+the optional extras) so should be easy to manipulate from code
+(usually shell).
+
+= format =
+
+Bloody hell. This now. So each platform has its own way of doing this,
+its own way of automating it and its own set of gotchas if you try and
+work around their braindeadedness. OpenBSD's is the best, if it can be
+called that, because it's not there at all and if you want to do
+anything more than simple partitioning then you drop out to the shell
+and just do it.
+
+Unfortunately even _that_ isn't always enough because although you can
+easily format the discs, you still need to inform the installer about
+them in many cases. Actually being formated, mounted and ready is not
+enough and often breaks.
+
+I've adopted the OpenBSD disklabel template format such that I think
+it can cover most peoples' needs. In particular it supports staying
+out of the way if you just want plain partitions/slices, software
+RAID, LVM & ZFS.
+
+Whether they can be made to work depends mostly on how restricted the
+installer's pre-install environment is. And availability of course.
+
+I have had success creating an installer which uses debootstrap in a
+live environment but while I am planning to include that as an option
+I would prefer that be an alternative to the main ISO-creation method.
+
+= os installs =
+
+Sit back and wait. A long time.
+
+= create users =
+= install software =
+= configure backup =
+
+Performing these steps is easy and there are more tools to do it than
+you can count. Ansible and Salt seem to be en vogue at the
+moment. Stash includes its own but it's by no means necessary.
+
+Ultimately the problem comes down to these three though. The previous
+steps were traditionally all performed manually because, well, they're
+all manual steps. Even in an automated environment they still need to
+be performed by hand:
+
+  get installer cd: Who's? Why? How do we trust it?
+  get computer    : From where? Why? Who's paying and how many?
+  boot cd         : Someone chooses when a server is activated (or which
+                    software to run which chooses).
+  answer questions: Most of the questions asked by the installer depend
+                    on some human-directed policy.
+  format          : The needs and availability of the server determine how
+                    to format it; a human chooses both of those things and
+                    decides on the layout.
+  os installs     : You don't need a human to run the tar -x but you need
+                    someone drink tea and watch it.
+
+So why is it a problem for automation? It's comes down to three things:
+
+ * How do we get the software package onto the server?
+ * How do we verify it?
+ * How do we obtain further secrets (keys) we may need (or: how does
+   this server identify and authenticate itself)?
+
+There are 2 different ways to run stash. Either create an ISO which
+creates a single unique server, or create an ISO which can be later
+combined with a package, either immediately or by cloning the hard
+drive it generated prior to the first boot, to uniquely identify a
+server. The package can be delivered in many ways. I will refer to
+this package as Userdata because I figure I might as well use amazon
+for something.
+
+When the OS is initially installed, apart from creating the
+standardised environment described above stash also embeds a public
+key which can verify the userdata from any source such as
+http, which location is recorded for use after the first boot, and in
+the case of the ISO being specialised for an individual server, embeds
+the userdata directly (which effectively pre-verifies it) and
+the server's unique identity.
+
+Verifying the new server's identity, from which authentication
+credentials can come, is made possible either by embedding a secret
+and certificate in the userdata or obtaining a public key from
+/etc/ssh over a trusted medium such as the serial console, which is
+then signed.
+
+Stash phases
+
+[1]  Single-shot iso
+[2]  Seperated userdata
+[2½] Cloned image
+
+* prepare hook scripts
+                          os installs
+* prepare fixup
+                          get installer cd
+                          format
+* [1] build userdata
+                      [1] get computer
+                      [1] answer questions
+                      [1] create users
+                      [1] install software
+                      [1] configure backup
+* build iso
+                          get installer cd
+* boot 1
+                          boot cd
+* run pre-hook (format)
+                          answer questions
+                          format
+* install
+                          format
+                          os installs
+* run post-hook (fixup; [1] extract to /root/stash)
+                      [1] os installs
+* halt
+* [2½] clone
+* [2] build userdata
+                      [2] get computer
+                      [2] answer questions
+                      [2] create users
+                      [2] install software
+                      [2] configure backup
+* boot 2
+                      [2½]get computer
+                          boot cd
+* firsttime ([2½] fixup packages; verify and run userdata ([2] extract to /root/stash))
+                      [2½]os installs
+                          create users
+                          install software
+                          configure backup
+* reboot (boot 3)
+                          boot cd
+
+mkautoiso
+mkenv - create signing key & config
+mkstash - build userdata
+mkvm - start a vm on a hypervisor using [1].
+mkclone - prepare an image to be cloned or booted for [2,2½]
+mkinstance - start a vm on a hypervisor using [2,2½]
+
+Future maybe:
+mkupdateiso - create an iso which, when booted, will mount the os and
+run upgrade, for people about to clone many machines which could be a
+month or two behind; alternative to simply building a new image then
+and there to clone.
+
+
+stash/run:
+# Expectations:
+# Must be run as root
+# Takes over the environment's lower-case keys
+# Creates /etc/stash
+# Supplemental stash requires a validation key in validator=/etc/ssh/ssh_ca_cert
+# Arguments [role[/environment=dev] [fqdn]]

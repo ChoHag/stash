@@ -1,0 +1,64 @@
+# This is an old kickstart file from a previous generation of stash
+# and has not been tested. Buyer beware.
+
+# Much of this is the default anyway but omission causes the installer to
+# prompt rather than assume the default, because what else would you want
+# an unattended installation to do?
+
+install
+cdrom
+cmdline
+poweroff
+
+keyboard --vckeymap=us --xlayouts='us'
+# 'None' is not an option; is C?
+lang en_US.UTF-8
+# Documentation has utc not isUtc; nontp is undocumented
+timezone Etc/UTC --isUtc --nontp
+network --hostname=changemehost.changemedomain
+network --device=eth0 --activate --bootproto=dhcp --noipv6
+selinux --disabled
+firstboot --disable
+
+auth --enableshadow --passalgo=sha512
+rootpw insecure
+
+# Linux in kvm+virtio will call it vda; other hypervisors may differ
+part /boot --fstype="ext4"  --noformat --onpart=vda1 --label=boot
+part pv.01 --fstype="lvmpv" --noformat --onpart=vda2
+
+volgroup os --noformat --useexisting
+logvol swap  --fstype="swap" --noformat --useexisting                --name=swap0 --vgname=os
+logvol /     --fstype="ext4"            --useexisting --label="root" --name=root  --vgname=os
+logvol /var  --fstype="ext4" --noformat --useexisting --label="var"  --name=var   --vgname=os
+logvol /tmp  --fstype="ext4" --noformat --useexisting --label="tmp"  --name=tmp   --vgname=os
+logvol /opt  --fstype="ext4" --noformat --useexisting --label="opt"  --name=opt   --vgname=os
+logvol /home --fstype="ext4" --noformat --useexisting --label="home" --name=home  --vgname=os
+
+bootloader --location=mbr --boot-drive=vda
+
+%packages
+@^minimal
+@core
+%end
+
+# Disable kdump
+%addon com_redhat_kdump --disable --reserve-mb='auto'
+%end
+
+%pre
+mount > /tmp/pre-MOUNTED
+find / > /tmp/pre-FIND
+set > /tmp/pre-VARS
+env > /tmp/pre-ENV
+[ -e /mkautoiso-prehook.sh ] && /mkautoiso-prehook.sh
+%end
+
+%post --nochroot
+mv /tmp/pre-* /mnt
+mount > /mnt/MOUNTED
+find / > /mnt/FIND
+set > /mnt/VARS
+env > /mnt/ENV
+[ -e /mkautoiso-posthook.sh ] && /mkautoiso-posthook.sh
+%end

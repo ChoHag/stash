@@ -1,0 +1,26 @@
+To be expanded on in here, for now the rules from initial-setup.txt:
+
+  Stash is a bourne shell application; see sh(1). Variables are not
+  exported to the environment by default (except for stash, maybe).
+
+  Roles are stored in a directory named 'role.' followed by the role's
+  name. The name must consist only of lower case ascii: letters,
+  numbers, the hyphen or underscore; it can begin only with a letter.
+
+  Each role owns the namespace of shell variables beginning with its
+  name (with hyphens converted to underscore).
+
+    For the benefit of doubt a subsequent underscore is _not_ required
+    and there is a conflict between roles named with a hypen and those
+    named with an underscore. Deal with it.
+
+  Environments follow the same rules with the directory named
+  'env.*'. They don't have their own namespace because that makes no
+  sense except in one specific place where for now I'm taking
+  ${environment}__*.
+
+  All variables beginning with underscore are private to stash. Those
+  not claimed as reserved words are private to the role of that name.
+
+  Variables in all caps (except APP) are ignored by stash.
+

@@ -1,0 +1,6 @@
+Nickname nobody
+ContactInfo no@where
+BridgeRelay 0
+AssumeReachable 0
+ExitRelay 0
+ExitPolicy reject *:*

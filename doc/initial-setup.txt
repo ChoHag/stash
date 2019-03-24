@@ -1,0 +1,105 @@
+The README gives a brief introduction to regular use of stash but does
+not go into the detail describing the first two steps, hand-waving
+away the configuration options which will go into org.sh and env.sh.
+
+This document assumes you have installed stash to /usr/local.
+
+At first the mkvm invocation to build a new server without configuring
+anything is something like:
+
+  $ mkvm -d example.org -I ~/Download/installer.iso -n foo -r nothing -S 10g
+
+And that's long enough already without having to also describe how to
+communicate with the hypervisor or what the specification of the new
+server should be. There are additional options as well to, eg. be able
+log in to the server when it's started.
+
+In short not something anybody wants to remember.
+
+All of the options except -n (the server's name) and -r (the server's
+role) can be put in the stash repository's configuration reducing the
+average mkvm invocation to:
+
+  $ mkvm [-e $environment] -r something -n foo ~/src/myorg
+
+Or caching the installed image prior to stashing:
+
+  $ mkclone [-e $environment] -n cached-base-image ~/src/myorg
+  # Then copy/clone/snapshot/upload/whatever
+  $ mkinstance [-e $environment] -r something -n foo ~/src/myorg
+
+If you are not writing roles yet you do not need to read namespace.txt
+in full (but do note its warning). Nevertheless it would help to take
+note of the main rules:
+
+  Stash is a bourne shell application; see sh(1). Variables are not
+  exported to the environment by default (except for stash, maybe).
+
+  Roles are stored in a directory named 'role.' followed by the role's
+  name. The name must consist only of lower case ascii: letters,
+  numbers, the hyphen or underscore; it can begin only with a letter.
+
+  Each role owns the namespace of shell variables beginning with its
+  name (with hyphens converted to underscore).
+
+    For the benefit of doubt a subsequent underscore is _not_ required
+    and there is a conflict between roles named with a hypen and those
+    named with an underscore. Deal with it.
+
+  Environments follow the same rules with the directory named
+  'env.*'. They don't have their own namespace because that makes no
+  sense except in one specific place where for now I'm taking
+  ${environment}__*.
+
+  All variables beginning with underscore are private to stash. Those
+  not claimed as reserved words are private to the role of that name.
+
+  Variables in all caps (except APP) are ignored by stash.
+
+Some namespaces are private to stash. Of particular note are stash
+itself, os, iso and hvm. Variables within these namespaces hold values
+which:
+
+  * control actions internal to stash,
+  * configure the size of the server created,
+  * inform stash how to configure the installer and
+  * configure how to operate a hypvisor to manipulate virtual machines.
+
+The organisation and environment are configured in files sourced by
+stash, so must be valid sh(1), located at the top of the stash
+repository named org.sh and the top of the environment directory named
+env.sh, respectively.
+
+In general they will be a simple plain-text file consisting of
+'name=value' pairs (with 'name' detailed in namespace.txt). Whitespace
+is significant as per sh(1). You probably want ' not ".
+
+When a stash utility starts, the first thing it will do is source
+org.sh in the repository, then env.sh in the active environment and
+then the command-line arguments. There are some exceptions detailed in
+the unwritten manpages.
+
+A typical org.sh may look like this:
+
+  org=car-dealer
+  domain=trusty-cars.org
+  default_environment=prod # The default default is 'dev'
+  os_size=20g              # The default is geared towards "tiny"
+  hvm=vmd
+  hvm_remote=dingo
+  sign=signify             # I'm trying to get rid of these two
+  stash_from=usb
+
+... while production's env.sh may look like:
+
+  stash_pubkey="env.prod/prod-0-stash.pub"        # These lines are
+  stash_key="/home/flask/.stash/prod-0-stash.sec" # created by mkenv
+  env="prod"                                      # for you.
+  hvm_dir=/srv/vm/prod
+  os_upstream=http://static.trusty-cars.org/mirror/OpenBSD/6.4/amd64
+  proxy=http://proxy-build.trusty-cars.org:3128/
+  proxy_runtime=http://proxy.trusty-cars.org:3128/
+
+After that it comes down to writing roles and launching servers. See
+roles.txt which doesn't exist for a description of roles and for now
+libstash.sh for a description of the variables stash and roles use.
