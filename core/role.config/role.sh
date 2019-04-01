@@ -108,14 +108,15 @@ _config_copy() {
 _config_template() {
   set -e
   local OPTIND=1 OPTARG= # Bash needs this
-  _opt= _pass=
-  while getopts rtxX _opt; do case "$_opt" in
+  _opt= _pass= _how=
+  while getopts re:txX _opt; do case "$_opt" in
+    e) _how=$OPTARG;;
     [rtxX]) _pass="$_pass$_opt";;
   esac; done
   shift $(($OPTIND-1))
   _real_src=$1 _real_dst=$2
   shift # only shift 1
-  _config_make_source() { _sht_template "$_real_src"; }
+  _config_make_source() { ${how:-_sht_template} "$_real_src"; }
   LOG_info ... template "$_real_dst"
   _config_copy -m ${_pass:+-$_pass} _config_make_source "$@"
 }
