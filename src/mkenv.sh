@@ -27,13 +27,13 @@ shift $(($OPTIND-1))
 
 envdir=${1:?No environment}
 name=${2:-${envdir##*/env.}} name=${name#env.}
-: ${repo:=${envdir%/env.$name}}
-if [ -z "$repo" -o "$repo" = "$envdir" ]; then repo=$PWD; fi
-envdir=${envdir#$repo/}
+if [ "${envdir#env.}" = "$name" ]; then
+  repo=$PWD envdir=env.$name
+else
+  repo=${envdir%/env.$name}
+fi
 
-if [ "$envdir" = "${envdir#env.}" ]; then
-  fail Must provide relative environment dir named env.\*
-elif [ "$repo" = "${repo#/}" ]; then
+if [ "$repo" = "${repo#/}" ]; then
   fail Repository path must be absolute
 fi
 
@@ -42,7 +42,7 @@ set_cli
 if [ -n "$secdir" -a "$secdir" = "${secdir#/}" ]; then
   fail Secret key path must be absolute
 fi
-: ${key:=$name-0}
+: ${key:=${org:+$org-}$name-0}
 secpath=${secdir:-$HOME/.stash}/$key-stash.sec # TODO: default $HOME/.stash/$org/*.sec
 pubpath=$repo/$envdir/$key-stash.pub
 
