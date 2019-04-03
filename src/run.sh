@@ -47,8 +47,10 @@ if on_firsttime; then
   fi
 fi
 
-LOG_notice Loading environment definition
-stash env "$environment"
+if [ -n "$environment" ]; then
+  LOG_notice Loading environment definition
+  stash env "$environment"
+fi
 
 LOG_notice Preparing core
 stash role config
@@ -74,7 +76,7 @@ if [ $# -eq 0 ]; then
   LOG_notice Loading identity from $stash/id
   . $stash/id
   _env=${role#*/}
-  if [ -n "$_env" -a "$_env" != "$role" -a "$_env" != "$environment" ]; then
+  if [ -n "$_env" -a "$_env" != "$role" -a -n "$environment" -a "$_env" != "$environment" ]; then
     LOG_error Unexpected environment: $_env
     exit 1
   fi

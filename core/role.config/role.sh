@@ -26,7 +26,7 @@ _config_replace_templated() {
 
 _config_share() {
   set +e
-  local _dst=$1
+  local _dst=$1 _what=
 
   changed_config=
   if _what=$(paired "$config_files" "$_dst"); then
@@ -36,7 +36,7 @@ _config_share() {
       [ -n "$running_role" ] && prepend_pair $running_role+ "$_dst"
       return 0
     fi
-    [ "${_what%[+-]}" != "$running_role" ] || fail role.${_what%[+-]} has already claimed "$_dst"
+    [ "${_what%[+-]}" = "$running_role" ] || fail role.${_what%[+-]} has already claimed "$_dst"
     [ "$_what" != "${_what%[+-]}" ] || fail "$_dst" is already exclusive to this role
     return 0
   fi
@@ -73,8 +73,8 @@ _config_copy() {
   [ -n "$_tracked" ] || _config_${_exclusive:-share} "$_dst" ${_ex_shared:+-}
 
   if [ -z "$_src_gen" ]; then
-    _esrc=$stash/env.$loaded_env/$_file
-    _rsrc=$stash/role.$running_role/$_file
+    # local _src=$(stash config find-file "$_file")
+    local _esrc=$stash/env.$loaded_env/$_file _rsrc=$stash/role.$running_role/$_file
     [ ! -e "$_esrc" ] && local _src=$_rsrc || local _src=$_esrc
 
     LOG_info ... copy ${_tracked:+untracked} ${_exclusive:+exclusively} "$_dst"
@@ -92,7 +92,7 @@ _config_copy() {
   fi
 
   config_changed=
-  _force= ; [ -z "$_exclusive$_tracked" ] || _force=1
+  local _force= ; [ -z "$_exclusive$_tracked" ] || _force=1
   if ! _maybe_copy ${_force:+-f} "$_src" "$_dst" "$_mode" "$_own"; then
     _r=$?
     rm -f "$_src_temp"
@@ -108,13 +108,13 @@ _config_copy() {
 _config_template() {
   set -e
   local OPTIND=1 OPTARG= # Bash needs this
-  _opt= _pass= _how=
+  local _opt= _pass= _how=
   while getopts re:txX _opt; do case "$_opt" in
     e) _how=$OPTARG;;
     [rtxX]) _pass="$_pass$_opt";;
   esac; done
   shift $(($OPTIND-1))
-  _real_src=$1 _real_dst=$2
+  local _real_src=$1 _real_dst=$2
   shift # only shift 1
   _config_make_source() { ${how:-_sht_template} "$_real_src"; }
   LOG_info ... template "$_real_dst"
@@ -123,10 +123,12 @@ _config_template() {
 
 _config_line() {
   set -e
+  local _prepend=
+  if [ "$1" = -p ]; then _prepend=1; shift; fi
   local running_role= # Temporarily unset so that $config_files is
                       # updated in a way that this action does not
                       # take ownership of the file
-  _ig=
+  local _ig=
   if [ "$1" = "-s" ]; then
     _ig='(ignored)'
     shift
@@ -139,6 +141,10 @@ _config_line() {
     if ! _config_share "$2" && [ -z "$_ig" ]; then
       fail Cannot append to file with exclusive owner
     fi
-    [ -z "$_ig" ] && echo "$1" >> "$2"
+    if [ -z "$_ig$_prepend" ]; then
+      echo "$1" >> "$2"
+    elif [ -z "$_ig" ]; then
+      printf '1i\n%s\n.\nw' "$1" | ed -s "$2"
+    fi
   fi
 }

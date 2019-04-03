@@ -211,8 +211,6 @@ chmkdir() { _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift;
 chtouch() { _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift;
             touch "$@"; [ -n "$_o" ] && chown $_o "$@"; chmod $_m "$@"; }
 
-line_in_file() { [ -e "$2" ] && grep -qFx "$1" "$2" || echo "$2" >> "$1"; }
-
 # This relies on the fact that the first time stash is run, type will
 # not be created until it's finished.
 on_firsttime() { ! [ -e /etc/stash/type ]; }

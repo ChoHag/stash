@@ -11,8 +11,8 @@ role_settings() {
 }
 
 _router_enable() {
+  local _ipv4= _ipv6=
   local OPTIND=1 OPTARG= # Bash needs this
-  _ipv4= _ipv6=
   while getopts 46 _opt; do case "$_opt" in
     4) _ipv4=1;; 6) _ipv6=1;;
   esac; done
@@ -29,9 +29,9 @@ _router_enable() {
 _router_enable_nat() {
   if on_openbsd; then
     if [ "$1" = "--rfc1918" ]; then
-      _src="10/8 172.16/12 192.168/16"
+      local _src="10/8 172.16/12 192.168/16"
     else
-      _src=$1
+      local _src=$1
     fi
     stash config line -s "internet = \"{ 0/0 }\"" /etc/pf.conf
     stash config line -s "match out on $interface from { $_src } to \$internet nat-to $2" /etc/pf.conf

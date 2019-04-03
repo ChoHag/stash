@@ -11,11 +11,13 @@ role_settings() {
 role_apply() {
   set -e
   if on_openbsd; then
-    if [ "$stash_pubkey" = "${stash_pubkey#env.$environment/}" \
-      -o "$stash_pubkey" = "${stash_pubkey%-stash.pub}" ]; then
-      fail Invalid public key
+    if [ -n "$stash_pubkey" ]; then
+      if [ "$stash_pubkey" = "${stash_pubkey#env.$environment/}" \
+        -o "$stash_pubkey" = "${stash_pubkey%-stash.pub}" ]; then
+        fail Invalid public key
+      fi
+      stash keys public ${stash_pubkey#env.$loaded_env/} /etc/signify/${stash_pubkey##*/}
     fi
-    stash keys public ${stash_pubkey#env.$loaded_env/} /etc/signify/${stash_pubkey##*/}
   fi
 }
 

@@ -9,7 +9,7 @@ set -e
 . "$LIBSTASH"/libstash.sh
 APP=restash
 
-while getopts hDe:i:n:o:w: _opt; do case "$_opt" in
+while getopts hDe:i:n:o:r:w: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;; # --help
   D) cli debug         true;;     # --debug
@@ -18,6 +18,7 @@ while getopts hDe:i:n:o:w: _opt; do case "$_opt" in
   i) cli id        "$OPTARG";;    # --id
   n) cli hostname  "$OPTARG";;    # --hostname
   o) cli outfile   "$OPTARG" ws;; # --out
+  r) cli role      "$OPTARG" ws;; # --role
   w) cli s_wherein "$OPTARG" ws;; # --workdir
 
   # -) --long-argument;;
@@ -33,7 +34,8 @@ find_environment
 
 mkstash ${debug:+-D}            \
   ${s_wherein:+-w "$s_wherein"} \
-  ${envdir:+-e$envdir}          \
+  ${envdir:+-e "$envdir"}       \
   -n $hostname ${id:+-i$id}     \
-  ${outfile:+-o$outfile}        \
+  ${role:+-r$role}              \
+  ${outfile:+-o "$outfile"}     \
   "$@"
