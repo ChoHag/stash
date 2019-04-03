@@ -32,6 +32,7 @@ repo=                    # [...X] The primary repository; usually the first non-
 role=                    # [...X] Server's primary role ## was role
 role_depends=            # [X...] also role_depends(); may conflict? ## was role_depends
 running_role=            # [X...] [R ] The name of the role which is currently loading or loading ## was running_role
+running_role_id=         # [X...] The above, with tr/-/_/
 start=                   # [X...] run time ## was start
 outfile=                 # [...X] ? ## was outfile
 proxy=                   # [..XX] for install time ## was proxy_install
@@ -175,6 +176,7 @@ stash() {
   apply) _role_finish;;
   env) _env_load "$1";;
   filename) _stash_find_repo_file "$@";;
+  read-id) _stash_id;;
   role) for _role; do _role_load $_role; done;;
   settings) _role_settings "$@";;
   /*) _role_finish; finish=$(date); _stash_save "$_how";;
@@ -243,28 +245,59 @@ _stash_find_repo_file() {
   fi
 }
 
-_stash_save() {
-  _dest=$1
+_stash_id() {
+  set -e
+  [ -e $stash/id ] || fail No stash ID in $stash/id
+  LOG_notice Loading identity from $stash/id
+  [ -z "$role" ] || fail read-id called more than once
+  local _pre_env=$environment
+  . $stash/id
+  local _env=${role#*/} _role=$role
+  role=${role%%/*}
+  if [ -z "$role" ]; then # also warn if role has changed? hostname etc.?
+    fail No role; exit 1
+  elif [ -n "$env" ]; then
+    fail env invalid in stash/id; exit 1
+  elif [ -n "$_pre_env" -a "$environment" != "$_pre_env" ]; then
+    fail New stash ID changed environment; exit 1
+  elif [ -n "$_env" -a "$_env" = "$_role" ]; then
+    _env=
+  elif [ -n "$_env" -a -n "$_pre_env" -a "$_env" != "$_pre_env" ]; then
+    fail Unexpected environment: $_env; exit 1
+  fi
+  : ${_env:=${_pre_env:-$default_environment}}
+  env=$_env environment=$_env
+  : ${fqdn:=$role-0.$environment.stashed}
+  LOG_notice "Identified as $fqdn running $role/$environment"
+  hostname=${fqdn%%.*} domain=${fqdn#*.}
+  _env_load "$env"
+}
 
-  _old= _new=
+_stash_save() {
+  local _dest=$1 _old_set= _new_set=
   for _v in $(set | grep '^__OLD__.*=' | cut -d= -f1); do unset $_v; done
   if [ -e "$_dest" ]; then
-    while read _line; do _old="$_old __OLD__${_line% # *}"; done < "$_dest"
-    eval "$_old"
+    # cannot (easily) use pipes
+    while read _line; do
+      _uncom=${_line%# *}
+      _plain=$(echo "$_uncom" | sed 's/^[[:space:]]*//')
+      if [ -n "$_plain" ]; then _old_set="$_old_set __OLD__$_plain"; fi
+    done < "$_dest"
+    eval "$_old_set"
   fi
 
   exec 3>&1
   [ -n "$_dest" ] && exec >>"$_dest"
 
-  set +e
   for _pair in stash fqdn role environment id loaded_roles $stashed_var; do
-    _var=${_pair#*:} _from_role=${_pair%%:*}
-    eval "[ \"\${$_var# }\" != \"\$__OLD__$_var\" ]" || continue # skip anything unchanged
-    if [ -z "$_new" ]; then
-      [ -z "$_old" ] || echo
+    local _var=${_pair#*:} _from_role=${_pair%%:*} _old_val= _new_val=
+    eval "_old_val=\$__OLD__$_var _new_val=\${$_var# }"
+    [ "$_old_val" = "$_new_val" ] || continue # skip anything unchanged
+    if [ -z "$_new_set" ]; then
+      [ -z "$_old_set" ] || echo
       echo start=\""$start"\"
       echo finish=\""$finish\""
-      _new=old
+      _new_set=old
     fi
     # TODO: protect against metacharacters, also in append_var etc.
     # nb. \ doesn't protect spaces in for x in $unprotected_var; ...

@@ -195,7 +195,7 @@ The squid port's configuration is already sane so there's no need to
 change it, only append the directive to enable caching:
 
   # echo 'cache_dir ufs /var/squid/cache 4096 16 256' >> /etc/squid/squid.conf
-  # squid -z
+  # squid -Nz
 
 And activate squid:
 
@@ -215,7 +215,7 @@ there's no need to start the daemon in the role):
     set -e
     pkg_add squid
     echo 'cache_dir ufs /var/squid/cache 4096 16 256' >> /etc/squid/squid.conf
-    /usr/local/sbin/squid -z
+    /usr/local/sbin/squid -Nz
     rcctl enable squid
   }
 
@@ -230,7 +230,7 @@ But to take the most advantage of stash it would actually be written like this:
   role_apply() {
     set -e
     stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
-    on_firsttime && /usr/local/sbin/squid -z
+    on_firsttime && /usr/local/sbin/squid -Nz
     stash daemon enable squid
   }
 
@@ -298,7 +298,7 @@ But first a review:
       role_apply() {
         set -e
         stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
-        on_firsttime && /usr/local/sbin/squid -z
+        on_firsttime && /usr/local/sbin/squid -Nz
         stash daemon enable squid
       }
 

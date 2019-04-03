@@ -122,7 +122,7 @@ chmod 755 "$s_where"/stash/run
 (
   if [ -n "$role" ]; then
     echo role=$role${env:+/$env}
-    echo fqdn=${hostname:-$role}${id:+-$id}.$domain
+    echo fqdn=${hostname:-$role}${id:+-$id}.$domain # TODO: allow override
   else
     echo environment=$env # default_?
   fi

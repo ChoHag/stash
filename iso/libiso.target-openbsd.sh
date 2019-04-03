@@ -25,7 +25,7 @@ fiddle_autoinstall() {
     [ -n "$hostname"    ] && echo "/^System hostname/s/=.*/= $hostname/"
     [ -n "$domain"      ] && echo "/^DNS domain name/s/=.*/= $domain/"
     [ -n "$os_packages" ] && echo "/^Set name/s/=.*/= -* +b* $os_packages/" # Not sets
-    [ -n "$proxy"       ] && echo "/^HTTP proxy URL/s/=.*/= $proxy_install/"
+    [ -n "$proxy"       ] && echo "/^HTTP proxy URL/s|=.*|= $proxy|"
     if [ -n "$os_upstream" ]; then
       unproto=${os_upstream#*://}
       remote_host=${unproto%%/*}
@@ -33,19 +33,19 @@ fiddle_autoinstall() {
       [ "$remote_path" = "$unproto" ] && remote_path=/
       echo                        "/^HTTP Server/s/=.*/= $remote_host/"
       if [ "$os_upstream" != "${os_upstream#*/}" ]; then
-      # This one's normally commented out to let the installer decide:
-      echo                        '/# Server directory/s/^# //'
-      echo                        "/^Server directory/s|=.*|= $remote_path|"
+        # This one's normally commented out to let the installer decide:
+        echo                      '/# Server directory/s/^# //'
+        echo                      "/^Server directory/s|=.*|= $remote_path|"
       fi
     fi
     if [ -e "$iso_rootkey" ]; then
-      echo                        "/^Public ssh key for root account/s/=.*/= $(cat "$iso_rootkey")/"
+      echo                        "/^Public ssh key for root account/s|=.*|= $(cat "$iso_rootkey")|"
     elif [ -e "${iso_rootkey#file:}" ]; then
-      echo                        "/^Public ssh key for root account/s/=.*/= $(cat "${iso_rootkey#file:}")/"
+      echo                        "/^Public ssh key for root account/s|=.*|= $(cat "${iso_rootkey#file:}")|"
     elif [ -n "$iso_rootkey" ]; then
-      echo                        "/^Public ssh key for root account/s/=.*/= $iso_rootkey/"
+      echo                        "/^Public ssh key for root account/s|=.*|= $iso_rootkey|"
     fi
-    [ -n "$iso_rootpw"  ] && echo "/^Password for root account/s/=.*/= $iso_rootpw/"
+    [ -n "$iso_rootpw"  ] && echo "/^Password for root account/s:=.*:= $iso_rootpw:"
     echo w
   ) | root ed -s "$iso_mount"/auto_install.conf
   root ed -s "$iso_mount"/install <<EOF # If SMP

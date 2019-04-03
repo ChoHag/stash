@@ -3,13 +3,13 @@
 
 role_settings() {
   on_openbsd || die_unsupported
-  rolevar searched
+  role var searched # ro
 }
 
 role_apply() {
   set -e
-  if [ -n "$supplement_searched" ]; then return; fi
-  rolevar searched true
+  if [ -n "$supplement_searched" ] || ! on_firsttime; then return; fi
+  role var searched true
   _usbdev=$(dmesg | grep -E ^sd[0-9]+: | cut -d: -f1 | sort -u | tail -n1)
   for _from in $(echo "$stash_from" | tr , ' '); do
     LOG_info Looking for stash from $_from

@@ -1,21 +1,35 @@
 #!/bin/sh
 
+# Upgrade beyond plain bourne shell if possible
 [ -z "$SH_VERSION" ] && which ksh >/dev/null 2>&1 && exec ksh "$0" "$@"
 [ -z "${SH_VERSION:-$BASH_VERSION}" ] && which bash >/dev/null 2>&1 && exec bash "$0" "$@"
 
 set -e
 
-init() {
-  for _s; do eval "_save_$_s=\$$_s"; done
-  : ${LIBSTASH:=${stash:=$(dirname -- "$0")}}
+: ${LIBSTASH:=${stash:=$(dirname -- "$0")}}
+
+runinit() {
   . "$LIBSTASH"/libstash.sh
-  if [ -e "$stash"/id ]; then . "$stash"/id; fi
-  if [ -e /etc/stash/type ]; then . /etc/stash/type; fi
-  loaded_roles= loaded_env=
+  repo=$LIBSTASH
+  if [ -e /etc/stash/type ]; then
+    . /etc/stash/type
+    loaded_roles= loaded_env=
+  elif [ -e "$stash"/id ]; then
+    . "$stash"/id
+  fi
+  if [ -n "$environment" ]; then
+    LOG_notice Loading environment definition
+    stash env "$environment"
+  fi
+}
+
+reinit() {
+  for _s; do eval "_save_$_s=\$$_s"; done
+  runinit
   for _s; do eval "$_s=\$_save_$_s"; done
 }
 
-init
+runinit
 
 if [ $# -ne 0 ]; then # identified from the command-line
   case "$1" in
@@ -47,11 +61,6 @@ if on_firsttime; then
   fi
 fi
 
-if [ -n "$environment" ]; then
-  LOG_notice Loading environment definition
-  stash env "$environment"
-fi
-
 LOG_notice Preparing core
 stash role config
 stash role keys
@@ -65,26 +74,13 @@ LOG_notice Applying early roles to obtain supplement
 stash apply
 
 LOG_notice Reload updated roles and libraries
-init domain environment fqdn hostname role start \
+reinit domain environment fqdn hostname role start \
   loaded_roles s_can_file s_can_method # ← So we don't have to re-load roles
-stash env "$environment"
 
 # If there was no identification on the command-line it should have
 # come from the supplement by now
-if [ $# -eq 0 ]; then
-  [ -e $stash/id ] || fail No stash ID in $stash/id
-  LOG_notice Loading identity from $stash/id
-  . $stash/id
-  _env=${role#*/}
-  if [ -n "$_env" -a "$_env" != "$role" -a -n "$environment" -a "$_env" != "$environment" ]; then
-    LOG_error Unexpected environment: $_env
-    exit 1
-  fi
-  role=${role%%/*}
-  : ${role:?No role}
-  : ${fqdn:=$role-0.$environment.stashed}
-  LOG_notice "Identified as $fqdn running $role ($environment)"
-  hostname=${fqdn%%.*} domain=${fqdn#*.}
+if [ $# -eq 0 -a \( -z "$role" \) ]; then
+  stash read-id
 fi
 
 # Load any settings which may have changed
@@ -104,7 +100,7 @@ LOG_notice Specialising server
 stash role $role
 stash role environment
 
-LOG_notice Applying all roles and saving
+LOG_notice Applying all roles and saving to /etc/stash/type
 stash /etc/stash/type
 
 if [ "$environment" = prod -o "$environment" = production ]; then
