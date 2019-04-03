@@ -174,6 +174,7 @@ stash() {
   case "$_how" in
   apply) _role_finish;;
   env) _env_load "$1";;
+  filename) _stash_find_repo_file "$@";;
   role) for _role; do _role_load $_role; done;;
   settings) _role_settings "$@";;
   /*) _role_finish; finish=$(date); _stash_save "$_how";;
@@ -227,6 +228,19 @@ _get_on() {
   elif [ -e /etc/devuan_version ]; then s_on=devuan
   elif [ "`uname`" = OpenBSD ];    then s_on=openbsd
   else die_unsupported unknown; fi
+}
+
+_stash_find_repo_file() {
+  local _name=$1
+  if [ -e "$stash/env.$loaded_env/$_name" ]; then
+    echo "$stash/env.$loaded_env/$_name"
+  elif [ -e "$stash/$_name" ]; then
+    echo "$stash/$_name"
+  elif [ -e "$stash/role.$running_role/$_name" ]; then
+    echo "$stash/role.$running_role/$_name"
+  else
+    return 1
+  fi
 }
 
 _stash_save() {

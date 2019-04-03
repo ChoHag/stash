@@ -68,26 +68,21 @@ _config_copy() {
   esac; done
   shift $(($OPTIND-1))
 
-  local _file=$1 _dst=$2 _mode=$3 _own=$4
+  local _file=$1 _dst=$2 _mode=$3 _own=$4 _src=
 
   [ -n "$_tracked" ] || _config_${_exclusive:-share} "$_dst" ${_ex_shared:+-}
 
   if [ -z "$_src_gen" ]; then
-    # local _src=$(stash config find-file "$_file")
-    local _esrc=$stash/env.$loaded_env/$_file _rsrc=$stash/role.$running_role/$_file
-    [ ! -e "$_esrc" ] && local _src=$_rsrc || local _src=$_esrc
-
-    LOG_info ... copy ${_tracked:+untracked} ${_exclusive:+exclusively} "$_dst"
-
-    if [ ! -e "$_src" ]; then
+    _src=$(stash filename "$_file") || true
+    if [ $? != 0 ]; then
       [ -n "$_required" ] || fail "role.$running_role/$_file" is missing
       return
     fi
-
+    LOG_info ... copy ${_tracked:+untracked} ${_exclusive:+exclusively} "$_dst"
     [ ! -f "$_src" ] && die_unsupported only files for config
 
   else
-    local _src=$(mktemp)
+    _src=$(mktemp)
     "$_file" > "$_src"
   fi
 
