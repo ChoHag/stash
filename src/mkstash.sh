@@ -46,6 +46,7 @@ _completed=
 got() { for _m in $_completed; do [ "$_m" = "$1" ] && return 0; done; return 1; }
 
 install_stash() {
+  # TODO: This has become a mess.
   _src=${1%/}
   _name=${_src##*/}
   _dst=$s_where/stash/$_name
@@ -93,12 +94,23 @@ install_stash() {
 [ -e "$envdir" ] && install_stash "$envdir"
 [ -e "$LIBSTASH"/run.sh ] || cp src/run.sh "$s_where"/stash/run # dev
 for _dir in "$@" ${_withcore:+"$LIBSTASH"} "$LIBSTASH"/lib; do
-  for _file in "$_dir"/role.* "$_dir"/env.* "$_dir"/run.sh "$_dir"/org.sh; do
-    [ -e "$_file" ] || continue
-    _name=${_file##*/}
-    contains "$_completed" "$_name" && continue
-    install_stash "$_file"
-  done
+  _all=; [ "$_dir" = "${_dir#$LIBSTASH}" ] && _all=1
+  if [ "$_dir" != "${_dir#$LIBSTASH}" ]; then
+    for _file in "$_dir"/role.* "$_dir"/env.* "$_dir"/run.sh "$_dir"/org.sh; do
+      [ -e "$_file" ] || continue
+      _name=${_file##*/}
+      contains "$_completed" "$_name" && continue
+      install_stash "$_file"
+    done
+  else
+    for _file in "$_dir"/*; do
+      [ -e "$_file" ] || continue
+      _name=${_file##*/}
+      contains "$_completed" "$_name" && continue
+      install_stash "$_file"
+    done
+  fi
+
   if [ -e "$s_where"/stash/run.sh ]; then
     if [ -e "$s_where"/stash/run ]; then rm "$s_where"/stash/run.sh
     else mv "$s_where"/stash/run.sh "$s_where"/stash/run; fi
