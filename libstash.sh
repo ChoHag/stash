@@ -292,7 +292,7 @@ _stash_save() {
   for _pair in stash fqdn role environment id loaded_roles $stashed_var; do
     local _var=${_pair#*:} _from_role=${_pair%%:*} _old_val= _new_val=
     eval "_old_val=\$__OLD__$_var _new_val=\${$_var# }"
-    [ "$_old_val" = "$_new_val" ] || continue # skip anything unchanged
+    [ "$_old_val" = "$_new_val" ] && continue # skip anything unchanged
     if [ -z "$_new_set" ]; then
       [ -z "$_old_set" ] || echo
       echo start=\""$start"\"
