@@ -10,7 +10,7 @@ role_settings() {
 }
 
 _users_group() {
-  set -ex
+  set -e
   _group=$1
   if ! _ent=$(getent group "$_group"); then # new group
     if on_openbsd; then group add \
@@ -18,29 +18,29 @@ _users_group() {
       "$_group"
     fi
   else # group already exists
-    die_unsupported Group $_group already exists
+    local _gname= _gpwd= _ggid= _gmembers=
+    fn() {
+      local IFS=:
+      set -o noglob
+      set -- $_ent
+      set +o noglob
+      _gname=$1 _gpwd=$2 _ggid=$3 _gmembers=$4
+    }
+    fn
+    : No options, nothing to change
   fi
 }
 
 _users_user() {
-  set -ex
-  _home= _makehome=1
-  # TODO: getopts
-  while [ $# -ge 1 -a "$1" != "${1#-}" ]; do _opt=$1; shift
-    case "$_opt" in
+  set -e
+  local _home= _makehome=1
+  local OPTIND=1 OPTARG= # Bash needs this
+  while getopts NH: _opt; do case "$_opt" in
     -N) _makehome=;;
-    -H|--home) _home=$1; shift;; --home=*) _home=${_opt#*=};;
-    esac
-  done
-#  while getopts NH: _opt; do case "$_opt" in
-#    N) _makehome=;;
-#    H) _home=$OPTARG;;
-#    \?) exit 1;;
-#  esac; done
-#  shift $OPTIND-1
-
-  _user=$1
-  _group=$2
+    -H) _home=$OPTARG;;
+  esac; done
+  shift $(($OPTIND-1))
+  local _user=$1 _group=$2
 
   if ! _ent=$(getent passwd "$_user"); then # new user
     _group=${_group:-=uid}
@@ -51,7 +51,21 @@ _users_user() {
     fi
 
   else # user already exists
-    die_unsupported User $_user already exists
+    local _pname= _ppwd= _puid= _pgid= _pgecos= _phome= _pshell=
+    fn() {
+      local IFS=:
+      set -o noglob
+      set -- $_ent
+      set +o noglob
+      _pname=$1 _ppwd=$2 _puid=$3 _pgid=$4 _pgecos=$5 _phome=$6 _pshell=$7
+    }
+    fn
+    if [ -n "$_home" -a "$_home" != "$_phome" ]; then
+      die_unsupported HOME has changed for $_user
+    fi
+    if [ -n "$_group" -a "$_group" != "$_pgid" ]; then # TODO: could also be group name
+      die_unsupported GID has changed for $_user
+    fi
   fi
 }
 
