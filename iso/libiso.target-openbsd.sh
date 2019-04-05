@@ -71,13 +71,21 @@ fiddle_hooks() {
     [ -z "$iso_post_hook" ] || root cp "$iso_post_hook" "$iso_mount"/mkautoiso-posthook.sh
     root touch "$iso_mount"/mkautoiso-prehook.sh "$iso_mount"/mkautoiso-posthook.sh
     root chmod 755 "$iso_mount"/mkautoiso-prehook.sh "$iso_mount"/mkautoiso-posthook.sh
-    root ed -s "$iso_mount"/install <<EOF >/dev/null
-/^do_autoinstall
-a
+    proxy_safe=$(echo "$proxy_runtime" | sed 's/:/\\c/g; s/\\/&&&/g')
+    root ed -s "$iso_mount"/install <<EOF
+/^do_autoinstall/a
 /mkautoiso-prehook.sh
 .
-/exec reboot
-i
+/exec reboot/i
+if [ -n "$proxy" ]; then
+  pcap= sshd=
+  for p in ftp http https; do
+    pcap="\${pcap:+\$pcap,}\${p}_proxy=$proxy_safe"
+    sshd="\${sshd:+\$sshd }\${p}_proxy=$proxy_runtime"
+  done
+  echo "/^default:/+1a\\n\\t:setenv=\$pcap:\\\\\\\\\\n.\\nw" | ed -s /mnt/etc/login.conf # 10
+  echo "1a\\nSetEnv \$sshd\\n.\\nw" | ed -s /mnt/etc/ssh/sshd_config
+fi
 /mkautoiso-posthook.sh
 .
 w
