@@ -3,6 +3,7 @@
 role_settings() {
   role method copy _config_copy
   role method line _config_line
+  role method set-line config_set_line
   role method share _config_share
   role method take _config_take
   role method template _config_template
@@ -20,6 +21,37 @@ _config_replace() {
 _config_replace_templated() {
   set -e
   _config_template -X $2 "/$(echo "${3#$1.}" | sed -r 's|_-\^?|/|g')"
+}
+
+config_set_line() {
+  # Like _config_line, which this starts as copy pasta of, except the
+  # first argument is the line's prefix which, if matched in the file,
+  # is removed first.
+
+  local _prepend=
+  if [ "$1" = -p ]; then _prepend=1; shift; fi
+  local running_role= # Temporarily unset so that $config_files is
+                      # updated in a way that this action does not
+                      # take ownership of the file
+  local _ig=
+  if [ "$1" = "-s" ]; then
+    _ig='(ignored)'
+    shift
+  fi
+  if [ -e "$3" ] && grep -qFx "$2" < "$3"; then
+    LOG_info ... include into "$3": "$1" "(exists)"
+    _config_share "$3"
+  else
+    LOG_info ... include solo in "$3": "$2" $_ig
+    if ! _config_share "$3" && [ -z "$_ig" ]; then
+      fail Cannot include in file with exclusive owner
+    fi
+    if [ -z "$_ig$_prepend" ]; then
+      echo "g/^$1/d\n\$a\n$2\n.\nw" | ed -s "$3"
+    elif [ -z "$_ig" ]; then
+      echo "g/^$1/d\n1a\n$2\n.\nw" | ed -s "$3"
+    fi
+  fi
 }
 
 _config_share() {
@@ -116,28 +148,52 @@ _config_template() {
 
 _config_line() {
   set -e
-  local _prepend=
-  if [ "$1" = -p ]; then _prepend=1; shift; fi
+  local _ig= _only= _prepend= _section=
+  local OPTIND=1 OPTARG= # Bash needs this
+  while getopts i:ops _opt; do case "$_opt" in
+    i) _section=$OPTARG;;
+    o) _only=1;;
+    p) _prepend=1;;
+    s) _ig='(ignored)';;
+  esac; done
+  shift $(($OPTIND-1))
+  local _line=$1 _file=$2 _ig=
   local running_role= # Temporarily unset so that $config_files is
                       # updated in a way that this action does not
                       # take ownership of the file
-  local _ig=
-  if [ "$1" = "-s" ]; then
-    _ig='(ignored)'
-    shift
-  fi
-  if [ -e "$2" ] && grep -qFx "$1" < "$2"; then
-    LOG_info ... include into "$2": "$1" "(exists)"
-    _config_share "$2"
-  else
-    LOG_info ... include into "$2": "$1" $_ig
-    if ! _config_share "$2" && [ -z "$_ig" ]; then
-      fail Cannot append to file with exclusive owner
+
+  if [ -n "$_only" ]; then
+    if [ ! -e "$_file" -o "$(cat "$_file" | tr -d \\n)" != "$_line" ]; then
+      echo "$_line" > "$_file"
+      # owner/mode? config_changed?
     fi
-    if [ -z "$_ig$_prepend" ]; then
-      echo "$1" >> "$2"
-    elif [ -z "$_ig" ]; then
-      printf '1i\n%s\n.\nw\n' "$1" | ed -s "$2"
+    return
+  fi
+
+  if [ -e "$_file" ] && grep -qFx "$_line" <"$_file"; then
+    LOG_info ... include into "$_file": "$_line" "(exists)"
+    _config_share "$_file"
+
+  else
+    LOG_info ... include into "$_file"${_section:+" ($_section)"}: "$_line" $_ig
+    if ! _config_share "$_file" && [ -z "$_ig" ]; then
+      fail Cannot update file with exclusive owner
+    fi
+    # Easy ones out of the way first
+    if [ -z "$_ig$_prepend$_section" ]; then
+      echo "$_line" >> "$_file"
+    elif [ -z "$_ig$_section" ]; then
+      printf '1i\n%s\n.\nw\n' "$_line" | ed -s "$_file"
+
+    elif [ -n "$_section" ]; then
+      if grep -qFx "$_section" <"$_file"; then # existing section:
+        local _safe=$(echo "$_section" | sed 's|[\^.[$()|*+?{\\]|\\&|g')
+        printf '/^%s$/a\n%s\n.\nw\n' "$_safe" "$_line"     | ed -s "$_file"
+      elif [ -n "$_prepend" ]; then  # insert at top of file:
+        printf '1i\n%s\n%s\n\n.\nw\n' "$_section" "$_line" | ed -s "$_file"
+      else                           # at bottom:
+        printf '$a\n\n%s\n%s\n.\nw\n' "$_section" "$_line" | ed -s "$_file"
+      fi
     fi
   fi
 }
