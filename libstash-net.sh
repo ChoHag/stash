@@ -4,27 +4,34 @@ myname() { echo ${hostname%.$domain}; }
 
 myname_var() { myname | tr - _; }
 
+mysubnet() { eval echo \"\${server_$(myname_var)_subnet%% *}\"; }
+mysubnets() { eval echo \"\${server_$(myname_var)_subnet}\"; }
+
 mycidr4() {
-  if [ -z "$1" ]; then eval "_subnet=\${server_$(myname_var)_subnet%% *}"; else _subnet=$1; fi
-  if eval [ \"\$subnet_${_subnet}\" = dynamic ]; then echo dynamic; return
+  if [ -z "$1" ]; then _subnet=$(mysubnet); else _subnet=$1; fi
+  eval local _val=\$subnet_${_subnet}_ipv4
+  if [ "$_val" = dynamic ]; then echo dynamic
   else eval echo \$subnet_${_subnet}_ipv4; fi
 }
 
 mycidr6() {
-  if [ -z "$1" ]; then eval "_subnet=\${server_$(myname_var)_subnet%% *}"; else _subnet=$1; fi
-  if eval [ \"\$subnet_${_subnet}\" = dynamic ]; then echo dynamic; return
+  if [ -z "$1" ]; then _subnet=$(mysubnet); else _subnet=$1; fi
+  eval local _val=\$subnet_${_subnet}_ipv6
+  if [ "$_val" = dynamic ]; then echo dynamic
   else eval echo \$subnet_${_subnet}_ipv6; fi
 }
 
 myipv4() {
-  if [ -z "$1" ]; then eval "_subnet=\${server_$(myname_var)_subnet%% *}"; else _subnet=$1; fi
-  if eval [ \"\$subnet_${_subnet}\" = dynamic ]; then echo dynamic
+  if [ -z "$1" ]; then _subnet=$(mysubnet); else _subnet=$1; fi
+  eval local _val=\$subnet_${_subnet}_ipv4
+  if [ "$_val" = dynamic ]; then echo dynamic
   else eval echo \$server_$(myname_var)_ipv4_$_subnet; fi
 }
 
 myipv6() {
-  if [ -z "$1" ]; then eval "_subnet=\${server_$(myname_var)_subnet%% *}"; else _subnet=$1; fi
-  if eval [ \"\$subnet_${_subnet}\" = dynamic ]; then echo dynamic
+  if [ -z "$1" ]; then _subnet=$(mysubnet); else _subnet=$1; fi
+  eval local _val=\$subnet_${_subnet}_ipv6
+  if [ "$_val" = dynamic ]; then echo dynamic
   else eval echo \$server_$(myname_var)_ipv6_$_subnet; fi
 }
 

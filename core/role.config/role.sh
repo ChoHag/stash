@@ -1,7 +1,5 @@
 #!sh
 
-. "$LIBSTASH"/libstash-sht.sh
-
 role_settings() {
   role method copy _config_copy
   role method line _config_line
@@ -52,6 +50,7 @@ _config_take() {
   if _what=$(paired "$config_files" "$_dst"); then
     [ "$_what" != + ] || fail "$_dst" is already shared
     [ "${_what%[${_shared:+-}+]}" = $running_role ] || fail role.${_what%[-+]} has already shared "$_dst"
+    [ -z "$_shared" -o "${_what%-}" = $running_role ] || fail this role has already shared "$_dst"
     return
   fi
 
@@ -88,15 +87,14 @@ _config_copy() {
 
   config_changed=
   local _force= ; [ -z "$_exclusive$_tracked" ] || _force=1
-  if ! _maybe_copy ${_force:+-f} "$_src" "$_dst" "$_mode" "$_own"; then
-    _r=$?
-    rm -f "$_src_temp"
-    case $_r in
-    101) config_changed=copy;;
-    102) config_changed=acl;;
-    *) return $_r;;
-    esac
-  fi
+  _r=0
+  _maybe_copy ${_force:+-f} "$_src" "$_dst" "$_mode" "$_own" || _r=$?
+  rm -f "$_src_temp"
+  case $_r in
+  101) config_changed=copy;;
+  102) config_changed=acl;;
+  *) return $_r;;
+  esac
   rm -f "$_src_temp"
 }
 
@@ -113,7 +111,7 @@ _config_template() {
   shift # only shift 1
   _config_make_source() { ${how:-_sht_template} "$_real_src"; }
   LOG_info ... template "$_real_dst"
-  _config_copy -m ${_pass:+-$_pass} _config_make_source "$@"
+  _config_copy -mx ${_pass:+-$_pass} _config_make_source "$@"
 }
 
 _config_line() {
@@ -139,7 +137,7 @@ _config_line() {
     if [ -z "$_ig$_prepend" ]; then
       echo "$1" >> "$2"
     elif [ -z "$_ig" ]; then
-      printf '1i\n%s\n.\nw' "$1" | ed -s "$2"
+      printf '1i\n%s\n.\nw\n' "$1" | ed -s "$2"
     fi
   fi
 }

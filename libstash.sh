@@ -83,6 +83,7 @@ os_version=              # [..XX] target os version ## was version
 
 . "$LIBSTASH"/libstash-env.sh
 . "$LIBSTASH"/libstash-role.sh
+. "$LIBSTASH"/libstash-sht.sh
 . "$LIBSTASH"/libstash-net.sh
 
 _has_logger= ; logger </dev/null 2>&0 || _has_logger=1

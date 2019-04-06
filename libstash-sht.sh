@@ -2,13 +2,7 @@
 
 sht_include() {
   set -e
-  if [ "$1" != "${1#env/}" ]; then
-    local _src=$stash/env.$loaded_env/${1#env/}
-  elif [ "$1" = "${1#env.}" ]; then
-    local _src=$stash/role.$running_role/$1
-  else
-    local _src=$stash/$1
-  fi
+  local _src=$(stash filename "$1")
 
   _proc=$(mktemp)
   (
@@ -25,12 +19,12 @@ sht_include() {
 }
 
 _sht_template() {
-  set -e
+  set +e
   local _src=$1
   exec 3>&1
   [ -n "$2" ] && exec >>"$2"
 
-  sht_include "${_src#$stash/role.$running_role/}" # will put it back
+  sht_include "$_src"
   _r=$?
   
   exec 1>&3 3>&-
