@@ -20,7 +20,7 @@ role_settings() {
 _pkg_install() {
   set -e
   [ -n "$pkg_started" ] || fail Cannot install packages in early environment
-  if on_openbsd; then pkg_add "$@"; fi
+  if on_openbsd; then pkg_add -Imz "$@"; fi
   append_var pkg_installed "$@"
 }
 

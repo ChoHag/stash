@@ -111,6 +111,9 @@ role() {
     shift
     _role_set_var "$@"
     ;;
+  *)
+    fail Unknown role command "$_how"
+    ;;
   esac
 }
 

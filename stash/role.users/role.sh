@@ -12,6 +12,7 @@ role_settings() {
 _users_group() {
   set -e
   _group=$1
+  LOG_info ... group $_group
   if ! _ent=$(getent group "$_group"); then # new group
     if on_openbsd; then group add \
       ${verbose:+-v}              \
@@ -42,6 +43,7 @@ _users_user() {
   shift $(($OPTIND-1))
   local _user=$1 _group=$2
 
+  LOG_info ... user $_user
   if ! _ent=$(getent passwd "$_user"); then # new user
     _group=${_group:-=uid}
     if on_openbsd; then user add ${verbose:+-v}  \

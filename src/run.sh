@@ -14,8 +14,9 @@ runinit() {
   if [ -e /etc/stash/type ]; then
     . /etc/stash/type
     loaded_roles= loaded_env=
+    hostname=${fqdn%%.*} domain=${fqdn#*.}
   elif [ -e "$stash"/id ]; then
-    . "$stash"/id
+    . "$stash"/id # skip _stash_id's verification # TODO: make it optional
   fi
   if [ -n "$environment" ]; then
     LOG_notice Loading environment definition

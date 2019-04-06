@@ -280,7 +280,7 @@ _stash_save() {
   if [ -e "$_dest" ]; then
     # cannot (easily) use pipes
     while read _line; do
-      _uncom=${_line%# *}
+      _uncom=${_line%%#*}
       _plain=$(echo "$_uncom" | sed 's/^[[:space:]]*//')
       if [ -n "$_plain" ]; then _old_set="$_old_set __OLD__$_plain"; fi
     done < "$_dest"
