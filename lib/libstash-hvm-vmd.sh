@@ -1,5 +1,10 @@
 #!sh
 
+hvm_clone() {
+  local _name=$1 _src=$2
+  _hvmd_vmctl create "qcow2:${hvm_dir:+$hvm_dir/}$_name.0" -b "${hvm_dir:+$hvm_dir/}$_src.0"
+}
+
 hvm_create() {
   local _name=$1 _size=$2 _id=${3:-0}
   _hvmd_vmctl create "qcow2:${hvm_dir:+$hvm_dir/}$_name.$_id" -s $_size
@@ -46,6 +51,7 @@ hvm_launch() {
 }
 
 hvm_save() {
+  set -e
   local _name=$1 _prepared=$2 _val=
   # Ensure the vm defined by hvm_def_$_name is in vm.conf, correctly,
   # and reload otherwise
@@ -123,6 +129,7 @@ hvm_wait() {
 # Implementation
 
 _hvmd_launch_declared() {
+  set -e
   local _name=$1 _usbf=$2 _extra=$3
   if [ -n "$_extra" ]; then
     hvm_get_all $_name >"$s_where"/hvm.stanza-saved

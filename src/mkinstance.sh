@@ -10,23 +10,24 @@ APP=mkinstance
 
 sign=none _transient_here=
 
-while getopts hD+:C:e:f:H:i:I:M:n:r:s:Tw: _opt; do case "$_opt" in
+while getopts hD+:c:C:e:f:H:i:I:M:n:r:s:Tw: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
 
   +) cli "${OPTARG%%=*}" "${OPTARG#*=}";; # --set
-  C) cli os_cpu       "$OPTARG";;    # --cpu
-  e) cli envdir       "$OPTARG" ws;; # --environment
-  f) cli stash_from   "$OPTARG" ws;; # --stash-from
-  H) cli hvm          "$OPTARG";;    # --hypervisor
-  i) cli id           "$OPTARG";;    # --id
-  M) cli os_ram       "$OPTARG";;    # --ram
-  n) cli hostname     "$OPTARG";;    # --hostname
-  r) cli role         "$OPTARG";;    # --role
-  s) cli sign         "$OPTARG";;    # --sign
+  c) cli os_clone_from "$OPTARG";;    # --clone-from
+  C) cli os_cpu        "$OPTARG";;    # --cpu
+  e) cli envdir        "$OPTARG" ws;; # --environment
+  f) cli stash_from    "$OPTARG" ws;; # --stash-from
+  H) cli hvm           "$OPTARG";;    # --hypervisor
+  i) cli id            "$OPTARG";;    # --id
+  M) cli os_ram        "$OPTARG";;    # --ram
+  n) cli hostname      "$OPTARG";;    # --hostname
+  r) cli role          "$OPTARG";;    # --role
+  s) cli sign          "$OPTARG";;    # --sign
   T) _transient_here=1;;
-  w) cli s_wherein    "$OPTARG" ws;; # --workdir
+  w) cli s_wherein     "$OPTARG" ws;; # --workdir
 
   # -) --long-argument;;
 

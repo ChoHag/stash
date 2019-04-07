@@ -64,6 +64,7 @@ os_platform=             # [..XX] Target os ## was platform
 os_ram=                  # [..XX] qty, mb or qualified ## was ram
 os_sets=                 # [..XX] ## was openbsd_sets
 os_size=                 # [..XX] qty, mb or qualified ## was size
+os_clone_from=           # [..XX] The source to clone when making a new instance
 s_can_file=              # [X...] Collected by -roles: filetypes roles can install ## was can_file
 s_can_method=            # [X...] Collected by -roles: methods roles can perform ## was can_roles
 s_on=                    # [X...] The current os

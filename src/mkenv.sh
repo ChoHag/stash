@@ -9,16 +9,16 @@ set -e
 APP=mkenv
 
 nopass= key= secdir=$HOME/.stash
-while getopts hDc:d:k:Ns: _opt; do case "$_opt" in
+while getopts hDd:k:Ns:S: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
 
-  c) cli secdir       "$OPTARG" ws;; # --secret-path
   d) cli domain       "$OPTARG";;    # --domain
   k) cli key          "$OPTARG";;    # --key-name
   N) cli nopass       yes;;          # --no-password
   s) cli sign         "$OPTARG";;    # --sign
+  S) cli secdir       "$OPTARG" ws;; # --secret-path
 
   # -) --long-argument;;
 

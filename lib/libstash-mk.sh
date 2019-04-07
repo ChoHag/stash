@@ -202,12 +202,14 @@ boot_1() { # reads stdin
 
 boot_2() {
   set -e
-  if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
+  local _clone= _stashname= _vmname=
+  if [ "$1" = --clone ]; then _clone=1; shift; fi
   if [ "$stash_from" != iso ]; then _userdata=$1; shift; fi
   _vmname=$env-${1:-$hostname${id:+-$id}}
   if [ "$stash_from" = iso ]; then
     hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"}
   else
+    if [ -n "$os_clone_from" ]; then hvm_clone $_vmname "$os_clone_from"; fi
     _stashname=stash-$_vmname
     case "$stash_from" in
     usb*)
