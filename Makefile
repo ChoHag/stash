@@ -65,6 +65,8 @@ roles=                 \
   nothing/role.sh      \
   pkg/role.sh          \
   router/role.sh       \
+  ssh/role.sh          \
+    ssh/request-host-certificate-ssh \
   tls/role.sh          \
   tor/role.sh          \
     tor/replace-sht.etc_-^tor_-^torrc        \
