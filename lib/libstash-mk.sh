@@ -1,15 +1,5 @@
 #!sh
 
-_mkwhere() {
-  if [ "$s_where" != /tmp/nowhere ]; then
-    fail Attempt to set s_where twice
-    exit 1
-  fi
-  s_where=$(mktemp -d ${s_wherein:+-p "$s_wherein"})
-  cleanup_nodebug() { rm -fr "$s_where" & }
-  atexit cleanup_nodebug
-}
-
 _hook_append() { cat >> "$s_where"/installer-post-hook; }
 _hook_append_pre() { cat >> "$s_where"/installer-pre-hook; }
 _hook_append_firsttime() {
@@ -223,21 +213,10 @@ boot_2() {
     usb*)
       _stashname=$_stashname.disc
       case "$stash_from" in
-      usb:*) hvm_upload $_stashname < ${stash_from#usb:};;
+      usb:*) hvm_upload $_stashname <${stash_from#usb:};;
       usb)
-        # Eugh... TODO: This, somehow.
-        vmctl create "$s_where"/usb.img -s 2m # 1m not enough
-        doas vnconfig vnd2 "$s_where"/usb.img
-        doas fdisk -iy vnd2
-        doas disklabel -w -A vnd2
-        doas newfs /dev/rvnd2a
-        doas mount /dev/vnd2a /mnt
-
-        doas tee /mnt/stash.tgz < "$_userdata" >/dev/null
-
-        doas umount /mnt
-        doas vnconfig -u vnd2
-        hvm_upload $_stashname < "$s_where"/usb.img
+        root "$(which mkstashfs)" <"$_userdata" >"$s_where"/usb.img
+        hvm_upload $_stashname <"$s_where"/usb.img
         ;;
       *) ...;;
       esac

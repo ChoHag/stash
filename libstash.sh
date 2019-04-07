@@ -157,9 +157,6 @@ want_linux()   { want_deb || want_centos; }
 want_bsd()     { want_openbsd; }
 want_systemd() { die_unsupported; }
 
-
-root() { [ $(id -u) = 0 ] && "$@"; }
-
 set_cli() { for _var in $cli; do eval $_var=\$cli__$_var; done; }
 cli() {
   if [ -z "$2" -a "$1" != "${1#[ 	]*}" ]; then
@@ -326,3 +323,19 @@ _maybe_copy() {
     chmod $_mode "$_dst"
   fi
 }
+
+_mkwhere() {
+  if [ "$s_where" != /tmp/nowhere ]; then
+    fail Attempt to set s_where twice
+    exit 1
+  fi
+  s_where=$(mktemp -d ${s_wherein:+-p "$s_wherein"})
+  cleanup_nodebug() { rm -fr "$s_where" & }
+  atexit cleanup_nodebug
+}
+
+if on_openbsd; then
+  root() { [ $(id -u) = 0 ] && "$@" || doas "$@"; }
+elif on_linux; then
+  root() { [ $(id -u) = 0 ] && "$@" || sudo "$@"; }
+fi

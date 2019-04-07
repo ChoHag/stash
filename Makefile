@@ -10,6 +10,7 @@ srcs=mkautoiso.sh \
   mkenv.sh        \
   mkinstance.sh   \
   mkstash.sh      \
+  mkstashfs.sh    \
   mkvm.sh         \
   read-layout.pl  \
   restash.sh      \
