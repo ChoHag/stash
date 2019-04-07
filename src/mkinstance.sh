@@ -8,9 +8,9 @@ set -e
 . "$LIBSTASH"/lib/libstash-mk.sh
 APP=mkinstance
 
-sign=none
+sign=none _transient_here=
 
-while getopts hD+:C:e:f:H:i:I:M:n:r:s:w: _opt; do case "$_opt" in
+while getopts hD+:C:e:f:H:i:I:M:n:r:s:Tw: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
@@ -25,6 +25,7 @@ while getopts hD+:C:e:f:H:i:I:M:n:r:s:w: _opt; do case "$_opt" in
   n) cli hostname     "$OPTARG";;    # --hostname
   r) cli role         "$OPTARG";;    # --role
   s) cli sign         "$OPTARG";;    # --sign
+  T) _transient_here=1;;
   w) cli s_wherein    "$OPTARG" ws;; # --workdir
 
   # -) --long-argument;;
@@ -41,7 +42,7 @@ find_environment
 [ -n "$stash_from" ] || fail "No stash source"
 [ "$sign" != none ] || fail "No signature method"
 
-_load_hvm $hvm
+_load_hvm $hvm $_transient_here
 
 _mkwhere
 

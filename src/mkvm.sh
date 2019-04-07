@@ -8,9 +8,9 @@ set -e
 . "$LIBSTASH"/lib/libstash-mk.sh
 APP=mkvm
 
-stash_from=iso
+stash_from=iso _transient_here=
 
-while getopts hD+:C:d:e:H:i:I:K:l:M:n:p:P:r:R:s:S:u:V:w:x:X: _opt; do case "$_opt" in
+while getopts hD+:C:d:e:H:i:I:K:l:M:n:p:P:r:R:s:S:Tu:V:w:x:X: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
@@ -33,6 +33,7 @@ while getopts hD+:C:d:e:H:i:I:K:l:M:n:p:P:r:R:s:S:u:V:w:x:X: _opt; do case "$_op
   R) cli iso_rootpw   "$OPTARG" ws;; # --password
   s) cli sign         "$OPTARG";;    # --sign
   S) cli os_size      "$OPTARG";;    # --size
+  T) _transient_here=1;;
   u) cli os_upstream  "$OPTARG";;    # --upstream
   V) cli os_version   "$OPTARG";;    # --version
   w) cli s_wherein    "$OPTARG" ws;; # --workdir
@@ -58,7 +59,7 @@ if [ "$hvm" = aws ]; then
   echo "Cannot run mkvm for aws; use mkclone & mkinstance" >&2
   exit 1
 fi
-_load_hvm $hvm
+_load_hvm $hvm $_transient_here
 
 _mkwhere
 

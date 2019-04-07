@@ -195,8 +195,8 @@ boot_1() { # reads stdin
   _vmname=$env-${1:-$hostname${id:+-$id}}
   hvm_create $_vmname $os_size || fail hvm_create # ignores -e
   hvm_upload auto-reformat-$_vmname.iso \
-    < "$_auto_iso" || fail hvm_upload # probably ignores -e too
-  hvm_wait   $_vmname "$os_ram" "$os_cpu" auto-reformat-$_vmname.iso
+    <"$_auto_iso" || fail hvm_upload # probably ignores -e too
+  hvm_wait   $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"} auto-reformat-$_vmname.iso
   # pre-hook, install, post-hook
 }
 
@@ -206,7 +206,7 @@ boot_2() {
   if [ "$stash_from" != iso ]; then _userdata=$1; shift; fi
   _vmname=$env-${1:-$hostname${id:+-$id}}
   if [ "$stash_from" = iso ]; then
-    hvm_wait $_vmname $ram $cpu
+    hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"}
   else
     _stashname=stash-$_vmname
     case "$stash_from" in
@@ -220,12 +220,12 @@ boot_2() {
         ;;
       *) ...;;
       esac
-      hvm_wait $_vmname "$os_ram" "$os_cpu" '' $_stashname
+      hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"} -u $_stashname
       ;;
     http:*|https:*) ... ;;
     pxe)...;;
     *);;
     esac
   fi
-  hvm_launch $_vmname "$os_ram" "$os_cpu"
+  hvm_launch $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"}
 }

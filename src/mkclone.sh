@@ -47,7 +47,7 @@ find_environment
 
 if [ "$iso_source" = - ]; then iso_source= ; fi
 
-_load_hvm $hvm
+_load_hvm $hvm transient
 
 _mkwhere
 

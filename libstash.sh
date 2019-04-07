@@ -42,9 +42,11 @@ sign=                    # [..Xx] how to sign ## was sign
 
 # Dunno what these are
 extra_cli=               # [X...] unused ## was extra_cli
-hvm=                     # [..Xx] This server's hypervisor ## was hvm
-hvm_dir=                 # [..Xx] image path ## was hvm_dir
-hvm_remote=              # [..Xx] address ## was hvm_remote
+hvm=                     # [.XXx] This server's hypervisor
+hvm_dir=                 # [.XXx] Where the hypervisor stores images
+hvm_remote=              # [.XXx] The network address at which the hypervisor is reached
+hvm_root=                # [.XXx] How to get root, if necessary
+hvm_transient=           # [.XXX] Whether this vm should be made permanent or transient: always/never/''
 
 # Stash 'public' variables
 : ${stash:=/root/stash}  # [X...] Top of extracted stash tree; this is the only lower-case variable to come from the environment ## was : ${stash:
