@@ -15,18 +15,15 @@ hvm_launch() {
   local _name=$1 _def= _trans=; shift
   [ -z "$(hvm_get_val $_name defined)" ]; _def=$?
   ! hvm_make_transient; _trans=$?
-  if [ $_def = 1 -a \( \( "$1" != "${1#-}" -a "$1" != -u \) -o \( "$2" != "${2#-}" \) \) ]; then
-    echo Unexpected arguments to hvm_launch >&2
-    return 1
-  fi
 
-  local _opt= _ram= _usbo=-r _usbf=cd
+  local _network= _opt= _ram= _usbo=-r _usbf=cd
   local OPTIND=1 OPTARG= # Bash needs this
-  while getopts c:r:u _opt; do case "$_opt" in
+  while getopts c:n:r:u _opt; do case "$_opt" in
   c)
     echo "SMP is not supported on vmd" >&2
     return 1
     ;;
+  n) _network=$OPTARG;;
   r) _ram=$OPTARG;;
   u) _usbo=-d _usbf=disc;; # attach extra disc as usb (vmd: block) instead of cd
   esac; done
@@ -35,11 +32,23 @@ hvm_launch() {
 
   case $_def$_trans in
   00)
-    hvm_declare $_name -ld ${hvm_dir:+$hvm_dir/}$_name.0 $_ram
+    local _net=
+    if [ "$_network" ]; then case "$_network" in
+      local) _net=-l;;
+      misc) _net=-m;;
+      bridged:*) _net="-b ${_network#*:}";;
+    esac; fi
+    hvm_declare $_name $_net -d ${hvm_dir:+$hvm_dir/}$_name.0 $_ram
     _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_dir:+$hvm_dir/}tmp/$_extra"}
     ;;
   01)
-    _hvmd_vmctl start $_name -L ${_ram:+-m "$_ram"} \
+    local _net=
+    if [ "$_network" ]; then case "$_network" in
+      local) _net=-L;;
+      misc) _net="-i 1";;
+      bridged:*) _net="-n ${_network#*:}";;
+    esac; fi
+    _hvmd_vmctl start $_name $_net ${_ram:+-m "$_ram"} \
       -d ${hvm_dir:+$hvm_dir/}$_name.0             \
       ${_extra:+$_usbo "${hvm_dir:+$hvm_dir/}tmp/$_extra"}
     ;;

@@ -10,7 +10,7 @@ APP=mkinstance
 
 sign=none _transient_here=
 
-while getopts hD+:c:C:e:f:H:i:I:M:n:r:s:Tw: _opt; do case "$_opt" in
+while getopts hD+:c:C:e:f:F:H:i:I:M:n:N:r:s:Tw: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
@@ -20,9 +20,11 @@ while getopts hD+:c:C:e:f:H:i:I:M:n:r:s:Tw: _opt; do case "$_opt" in
   C) cli os_cpu        "$OPTARG";;    # --cpu
   e) cli envdir        "$OPTARG" ws;; # --environment
   f) cli stash_from    "$OPTARG" ws;; # --stash-from
+  F) cli os_definition "$OPTARG" ws;; # --[machine-]definition
   H) cli hvm           "$OPTARG";;    # --hypervisor
   i) cli id            "$OPTARG";;    # --id
   M) cli os_ram        "$OPTARG";;    # --ram
+  N) cli os_network    "$OPTARG";;    # --network
   n) cli hostname      "$OPTARG";;    # --hostname
   r) cli role          "$OPTARG";;    # --role
   s) cli sign          "$OPTARG";;    # --sign

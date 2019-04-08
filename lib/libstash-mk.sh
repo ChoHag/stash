@@ -196,18 +196,42 @@ boot_1() { # reads stdin
   hvm_create $_vmname $os_size || fail hvm_create # ignores -e
   hvm_upload auto-reformat-$_vmname.iso \
     <"$_auto_iso" || fail hvm_upload # probably ignores -e too
-  hvm_wait   $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"} auto-reformat-$_vmname.iso
+  if [ -n "$os_definition" ]; then
+    _toeval=
+    while read -r _line; do
+      _toeval=$(echo "$_toeval"; echo "$_line")
+    done <"$os_definition"
+    eval "hvm_declare \\$_toeval"
+    hvm_wait $_vmname
+  else
+    hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"} ${os_network:+-n"$os_network"} auto-reformat-$_vmname.iso
+  fi
   # pre-hook, install, post-hook
 }
 
 boot_2() {
   set -e
-  local _clone= _stashname= _vmname=
+  local _clone= _stashname= _vmname= _toeval=
   if [ "$1" = --clone ]; then _clone=1; shift; fi
   if [ "$stash_from" != iso ]; then _userdata=$1; shift; fi
   _vmname=$env-${1:-$hostname${id:+-$id}}
+  if [ -n "$os_definition" ]; then
+    set -- $_vmname
+    if [ -z "$(hvm_get_val $_vmname defined)" ]; then
+      while read -r _line; do
+        _toeval=$(echo "$_toeval"; echo "$_line")
+      done <"$os_definition"
+      eval "hvm_declare \\$_toeval"
+    fi
+  else
+    set -- $_vmname          \
+      ${os_ram:+-r"$os_ram"} \
+      ${os_cpu:+-c"$os_cpu"} \
+      ${os_network:+-n"$os_network"}
+  fi
+
   if [ "$stash_from" = iso ]; then
-    hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"}
+    hvm_wait "$@"
   else
     if [ -n "$os_clone_from" ]; then hvm_clone $_vmname "$os_clone_from"; fi
     _stashname=stash-$_vmname
@@ -222,12 +246,12 @@ boot_2() {
         ;;
       *) ...;;
       esac
-      hvm_wait $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"} -u $_stashname
+      hvm_wait "$@" -u $_stashname
       ;;
     http:*|https:*) ... ;;
     pxe)...;;
     *);;
     esac
   fi
-  hvm_launch $_vmname ${os_ram:+-r"$os_ram"} ${os_cpu:+-c"$os_cpu"}
+  hvm_launch "$@"
 }

@@ -31,17 +31,17 @@ hvm_declare() {
     echo The first argument to hvm_declare must be the VM name >&2
     return 1
   fi
-  hvm_clear $_name
+  hvm_ready $_name
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts ab:c:d:lmr:u: _opt; do case $_opt in
   a) hvm_set_val         $_name auto 1;;
-  b) hvm_network_bridged $_name "$OPTARG";;
-  c) hvm_set_cores       $_name "$OPTARG";;
-  d) hvm_attach_disc     $_name "$OPTARG";;
-  l) hvm_network_local   $_name;;
-  m) hvm_network_misc    $_name;;
-  r) hvm_attach_cd       $_name "$OPTARG";;
-  u) hvm_attach_usb      $_name "$OPTARG";;
+  b) hvm_network_bridged "$OPTARG";;
+  c) hvm_set_cores       "$OPTARG";;
+  d) hvm_attach_disc     "$OPTARG";;
+  l) hvm_network_local;;
+  m) hvm_network_misc;;
+  r) hvm_attach_cd       "$OPTARG";;
+  u) hvm_attach_usb      "$OPTARG";;
   esac; done
   shift $(($OPTIND-1))
   hvm_set_val $_name ram "$1"
@@ -52,30 +52,40 @@ hvm_declare() {
 ## Attachments
 
 hvm_attach_block() {
-  local _name=$1 _path=$2 _type=$3
-  local _count=$(hvm_get_val $_name ${_type:-disc}_count)
+  local _name=$hvm_defining
+  if [ $# -eq 3 ]; then _name=$1; shift; fi
+  local _path=$1 _type=$2
+  local _count=$(hvm_get_val $_name ${_type}_count)
   : ${_count:=0}
-  hvm_set_val $_name ${_type:-disc}_${_count}_path "$_path"
-  hvm_set_val $_name ${_type:-disc}_count $(($_count+1))
+  hvm_set_val $_name ${_type}_${_count}_path "$_path"
+  hvm_set_val $_name ${_type}_count $(($_count+1))
 }
 
-hvm_network_misc() {
-  local _name=$1 _id=$2 _type=$3
-  local _count=$(hvm_get_val $_name ${_type:-misc}_count)
-  hvm_set_val $_name ${_type:-misc}_${_count}_settings "${_id:-yes}"
-  hvm_set_val $_name ${_type:-misc}_count $(($_count+1))
+hvm_network() {
+  local _type=$1 _name=$hvm_defining
+  shift
+  if [ \( "$_type" = bridged -a $# -ge 2 \) \
+    -o \( "$_type" != bridged -a $# -ge 1 \) ]; then
+    _name=$1
+    shift
+  fi
+  local _id=$1 _count=$(hvm_get_val $_name ${_type}_count)
+  hvm_set_val $_name ${_type}_${_count}_settings "${_id:-yes}"
+  hvm_set_val $_name ${_type}_count $(($_count+1))
 }
 
 hvm_attach_cd() { hvm_attach_block "$@" cd; }
-hvm_attach_disc() { hvm_attach_block "$@"; }
+hvm_attach_disc() { hvm_attach_block "$@" disc; }
 hvm_attach_usb() { hvm_attach_block "$@" usb; }
 
-hvm_network_bridged() { hvm_network_misc "$@" bridged; }
-hvm_network_local() { hvm_network_misc "$@" '' local; }
+hvm_network_bridged() { hvm_network bridged "$@"; }
+hvm_network_local() { hvm_network local "$@"; }
+hvm_network_misc() { hvm_network misc "$@"; }
 
 ## Variables
 
-hvm_clear() {
+hvm_ready() {
+  hvm_defining=$1
   local _name=$(echo "$1" | tr - _) _var=
   for _var in auto cores ram template; do hvm_set_val $_name $_var ''; done
   for _var in cd disc usb \
