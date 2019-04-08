@@ -51,5 +51,14 @@ _mkwhere
 
 _call() { set -e; LOG_info Calling $1; "$@"; }
 
+# TODO: This fucks up mkautoiso because of lack of uname (!?)
+# /mkautoiso-posthook.sh: /mnt/root/stash/libstash.sh[344]: uname: not found
+# stash[73286] error Unsupported platform: unknown
+if on_openbsd; then
+  root() { [ $(id -u) = 0 ] && "$@" || doas "$@"; }
+elif on_linux; then
+  root() { [ $(id -u) = 0 ] && "$@" || sudo "$@"; }
+fi
+
 _call build_userdata --clone "$@" > "$s_where"/userdata
 _call boot_2 --clone "$s_where"/userdata

@@ -59,6 +59,7 @@ stashed_var=             # [X...] [R?] A list of variables to record ## was stas
 
 # Stash internal variables
 os_cpu=                  # [..XX] qty ## was cpu
+os_network=local         # [.X..] VM's primary network
 os_packages=             # [..XX] ? ## was packages
 os_platform=             # [..XX] Target os ## was platform
 os_ram=                  # [..XX] qty, mb or qualified ## was ram
@@ -335,9 +336,3 @@ _mkwhere() {
   cleanup_nodebug() { rm -fr "$s_where" & }
   atexit cleanup_nodebug
 }
-
-if on_openbsd; then
-  root() { [ $(id -u) = 0 ] && "$@" || doas "$@"; }
-elif on_linux; then
-  root() { [ $(id -u) = 0 ] && "$@" || sudo "$@"; }
-fi
