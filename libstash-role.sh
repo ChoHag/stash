@@ -99,7 +99,7 @@ role() {
   shift
   case "$_how" in
   depends)
-    append_var role_depends_$running_role "$@"
+    append_var role_depends_$running_role_id "$@"
     for _role in "$@"; do _role_load $_role; done
     ;;
   do)       _role_do_method "$@";;

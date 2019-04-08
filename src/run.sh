@@ -80,7 +80,7 @@ reinit domain environment fqdn hostname role start \
 
 # If there was no identification on the command-line it should have
 # come from the supplement by now
-if [ $# -eq 0 -a \( -z "$role" \) ]; then
+if [ $# -eq 0 ]; then
   stash read-id
 fi
 

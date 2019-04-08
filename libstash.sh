@@ -250,23 +250,22 @@ _stash_id() {
   set -e
   [ -e $stash/id ] || fail No stash ID in $stash/id
   LOG_notice Loading identity from $stash/id
-  [ -z "$role" ] || fail read-id called more than once
-  local _pre_env=$environment
+  local _pre_environment=$environment _pre_env=$env
   . $stash/id
   local _env=${role#*/} _role=$role
   role=${role%%/*}
   if [ -z "$role" ]; then # also warn if role has changed? hostname etc.?
     fail No role; exit 1
-  elif [ -n "$env" ]; then
+  elif [ -n "$env" -a "$env" != "$_pre_env" ]; then
     fail env invalid in stash/id; exit 1
-  elif [ -n "$_pre_env" -a "$environment" != "$_pre_env" ]; then
+  elif [ -n "$_pre_environment" -a "$environment" != "$_pre_environment" ]; then
     fail New stash ID changed environment; exit 1
   elif [ -n "$_env" -a "$_env" = "$_role" ]; then
     _env=
-  elif [ -n "$_env" -a -n "$_pre_env" -a "$_env" != "$_pre_env" ]; then
+  elif [ -n "$_env" -a -n "$_pre_environment" -a "$_env" != "$_pre_environment" ]; then
     fail Unexpected environment: $_env; exit 1
   fi
-  : ${_env:=${_pre_env:-$default_environment}}
+  : ${_env:=${_pre_environment:-$default_environment}}
   env=$_env environment=$_env
   : ${fqdn:=$role-0.$environment.stashed}
   LOG_notice "Identified as $fqdn running $role/$environment"
