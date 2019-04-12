@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 usage() {
   echo \?
   exit ${1:-0}
@@ -46,20 +44,26 @@ on_systemd() { die_unsupported; }
 
 exec 3>&1 >&2
 
-dd if=/dev/zero of="$s_where"/fs.img bs=1 count=1 seek=$(($bytes - 1))
+die() { echo "Failed: $@; aborting" >&2; exit 1; }
+
+dd if=/dev/zero of="$s_where"/fs.img bs=1 count=1 seek=$(($bytes - 1)) || die create "$s_where"/fs.img
 
 if on_openbsd; then
   loop=$(vnconfig -l | awk -F: '/not in use/ { print $1; exit }')
-  vnconfig ${loop} "$s_where"/fs.img
-  fdisk -iy ${loop}
-  disklabel -w -A ${loop}
-  newfs /dev/r${loop}a
-  mount /dev/${loop}a /mnt
-
-  cat >/mnt/stash.tgz
-
+  [ -n "$loop" ] || die cannot find unused vnd device
+  (
+    set -e
+    vnconfig $loop "$s_where"/fs.img
+    size=$(fdisk $loop | tr -d [] | awk '/^Disk/ {print $5}')
+    printf 'edit 0\n6\nn\n128\n%u\nq\n' $(($size-128)) | fdisk -e $loop
+    newfs_msdos -F 16 /dev/r${loop}i
+    mount /dev/${loop}i /mnt
+    cat >/mnt/stash.tgz
+  )
+  _r=$?
   umount /mnt
-  vnconfig -u ${loop}
+  vnconfig -u $loop
+  [ $_r = 0 ] || die mkfs
 fi
 
 cat "$s_where"/fs.img >&3

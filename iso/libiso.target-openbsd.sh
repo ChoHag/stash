@@ -3,10 +3,10 @@
 : ${os_version:=$(echo "$iso_source" | sed 's/.*\(.\)\(.\)\..*$/\1.\2/')}
 
 load_ramdisc() {
-  elfrdsetroot -x "$s_where"/cd/${os_version?No version}/amd64/bsd.rd "$s_where"/ramdisc || return $?
+  elfrdsetroot -x "$s_where"/cd/${os_version?No version}/amd64/bsd.rd "$s_where"/ramdisc || die extract ramdisc
   echo fs "$s_where"/ramdisc
 }
-save_ramdisc() { elfrdsetroot "$s_where"/cd/$os_version/amd64/bsd.rd "$s_where"/ramdisc; }
+save_ramdisc() { elfrdsetroot "$s_where"/cd/$os_version/amd64/bsd.rd "$s_where"/ramdisc || die inject ramdisc; }
 
 fiddle_serial() {
   # Enable the serial port
@@ -14,7 +14,6 @@ fiddle_serial() {
 }
 
 fiddle_autoinstall() {
-  set -e
   ## Questions
   if [ -e "$LIBSTASH"/iso/installer.openbsd-$os_version ]; then
     root cp "$LIBSTASH"/iso/installer.openbsd-$os_version "$iso_mount"/auto_install.conf
@@ -57,11 +56,11 @@ EOF
   # OpenBSD's partitioning will be performed by the installer
   get_fslayout | read-layout openbsd 0 | grep -v ^# \
     | root tee "$iso_mount"/disklabel.template >/dev/null
+  [ -s "$iso_mount"/disklabel.template ] || die parsing disklabel "$os_fslayout"
   # TODO: Warn if >0 or options, but only of not called from mk*
 }
 
 fiddle_hooks() {
-  set -e
   if [ -n "$iso_pre_hook" -o -n "$iso_post_hook" ]; then
     # Unfortunately openbsd doesn't have a mechanism to run a custom
     # hooks before or after auto-install. Find the do_autoinstall
@@ -72,7 +71,7 @@ fiddle_hooks() {
     root touch "$iso_mount"/mkautoiso-prehook.sh "$iso_mount"/mkautoiso-posthook.sh
     root chmod 755 "$iso_mount"/mkautoiso-prehook.sh "$iso_mount"/mkautoiso-posthook.sh
     proxy_safe=$(echo "$proxy_runtime" | sed 's/:/\\c/g; s/\\/&&&/g')
-    root ed -s "$iso_mount"/install <<EOF
+    root ed -s "$iso_mount"/install <<EOF || die injecting autorun hooks
 /^do_autoinstall/a
 /mkautoiso-prehook.sh
 .
@@ -94,7 +93,6 @@ EOF
 }
 
 mkiso() {
-  set -e
   # Create new iso
   # From src/distrib/amd64/cdfs/Makefile
   if on_openbsd; then
@@ -120,7 +118,6 @@ mkiso() {
     # -c  boot_catalog
 
   else
-    echo Unsupported build/target combination >&2
-    return 1
+    die_unsupported build/target combination
   fi
 }

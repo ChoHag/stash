@@ -10,7 +10,6 @@ role_settings() {
 }
 
 _users_group() {
-  set -e
   _group=$1
   LOG_info ... group $_group
   if ! _ent=$(getent group "$_group"); then # new group
@@ -33,7 +32,6 @@ _users_group() {
 }
 
 _users_user() {
-  set -e
   local _home= _makehome=1
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts NH: _opt; do case "$_opt" in
@@ -79,5 +77,5 @@ _users_group_file() {
                     groupname
     _users_group "$groupname"
   done
-  ...
+  die undefined
 }

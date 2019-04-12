@@ -3,7 +3,6 @@
 role_settings() { on_openbsd || die_unsupported; }
 
 role_apply() {
-  set -e
   if on_openbsd; then
     # Nothing to install, unbound is built in
     stash config copy unbound.conf /var/unbound/etc/unbound.conf

@@ -24,7 +24,7 @@ EOF
 
 _apt() {
   # from /bin/apt-install
-  inroot debconf-apt-progress --no-progress --logstderr -- apt-get -q -y "$@"
+  inroot debconf-apt-progress --no-progress --logstderr -- apt-get -q -y "$@" || die apt
 }
 
 _apt update

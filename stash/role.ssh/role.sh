@@ -8,15 +8,12 @@ role_settings() {
 }
 
 role_apply() {
-  set -e
   if [ -n "$ssh_ca_address" ]; then
     for _kt in ed25519; do
       local _cert=/etc/ssh/ssh_host_${_kt}_cert.pub
       if [ ! -s $_cert ]; then
         LOG_info ... ssh certificate $_cert
-        sh $stash/role.ssh/request-host-certificate-ssh "$ssh_ca_hosts@$ssh_ca_address" $_kt
-        _r=$? # For some reason not caught by -e
-        [ $_r -eq 0 ] || return $_r
+        sh $stash/role.ssh/request-host-certificate-ssh "$ssh_ca_hosts@$ssh_ca_address" $_kt || die ssh certificate request
       fi
       stash config line -p "HostCertificate $_cert" /etc/ssh/sshd_config
     done
@@ -24,7 +21,6 @@ role_apply() {
 }
 
 _ssh_public_key() {
-  set -e
   local _ca= _system= _line= _list= _opt= _user=
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts cs _opt; do case "$_opt" in

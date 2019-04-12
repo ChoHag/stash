@@ -2,8 +2,6 @@
 
 # Generate envdir and stash signing key
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 APP=mkenv
@@ -34,13 +32,13 @@ else
 fi
 
 if [ "$repo" = "${repo#/}" ]; then
-  fail Repository path must be absolute
+  die repository path must be absolute
 fi
 
 if [ -e "$repo"/org.sh ]; then . "$repo"/org.sh; fi
 set_cli
 if [ -n "$secdir" -a "$secdir" = "${secdir#/}" ]; then
-  fail Secret key path must be absolute
+  die secret key path must be absolute
 fi
 : ${key:=${org:+$org-}$name-0}
 secpath=${secdir:-$HOME/.stash}/$key-stash.sec # TODO: default $HOME/.stash/$org/*.sec
@@ -49,17 +47,15 @@ pubpath=$repo/$envdir/$key-stash.pub
 if [ ! -e "$secpath" ]; then chmkdir 0700 "$(dirname "$secpath")"
 else :; fi # TODO: Check permission of secret's directory and abort if bad
 
-if [ ! -e "$repo/$envdir" ]; then mkdir "$repo/$envdir";
-elif [ -e "$repo/$envdir"/env.sh ]; then fail Environment already exists; fi
+if [ ! -e "$repo/$envdir" ]; then mkdir "$repo/$envdir" || die mkdir "$repo/$envdir";
+elif [ -e "$repo/$envdir"/env.sh ]; then die environment already exists; fi
 
 if ! signify -G ${nopass:+-n} -c "$key stash" -p "$pubpath" -s "$secpath"; then
-  _r=$?
   rmdir "$repo/$envdir" # also only if it was made but meh
-  exit $_r
+  die signify
 fi
 
 exec >> "$repo/$envdir"/env.sh
-set +e
 echo "stash_pubkey=\"${pubpath#$repo/}\""
 echo "stash_key=\"$secpath\""
 echo "env=\"$name\""

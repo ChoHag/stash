@@ -1,7 +1,5 @@
 #!sh
 
-set -e
-
 if [ -e /payload ]; then
   tar -C $_top/root -xf /payload
   if [ -e $_top/root/stash.tgz ]; then

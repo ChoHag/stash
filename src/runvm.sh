@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 . "$LIBSTASH"/lib/libstash-hvm.sh

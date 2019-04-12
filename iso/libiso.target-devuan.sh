@@ -7,7 +7,6 @@ load_ramdisc() { echo cpioz "$s_where"/cd/install.amd/initrd.gz; }
 save_ramdisc() { :; }
 
 fiddle_serial() {
-  set -e
   # Enable the serial port
   cat > "$s_where"/cd/isolinux/isolinux.cfg <<EOF
 prompt 0
@@ -40,7 +39,6 @@ EOF
 # y ? repo
 #   ? packages
 fiddle_autoinstall() { # inc. layout, halt
-  set -e
   if [ -e "$LIBSTASH"/iso/installer.devuan-$os_version ]; then
     cp "$LIBSTASH"/iso/installer.devuan-$os_version "$s_where"/ramdiscd/preseed.cfg
 
@@ -77,7 +75,6 @@ fiddle_autoinstall() { # inc. layout, halt
 }
 
 fiddle_hooks() {
-  set -e
   [ -n "$iso_payload" ] && cp "$iso_payload" "$s_where"/ramdiscd/payload
   [ -n "$iso_pre_hook" ] && cp "$iso_pre_hook" "$s_where"/ramdiscd/mkautoiso-prehook.sh
   [ -n "$iso_post_hook" ] && cp "$iso_post_hook" "$s_where"/ramdiscd/mkautoiso-posthook.sh
@@ -86,7 +83,6 @@ fiddle_hooks() {
 }
 
 mkiso() {
-  set -e
   # Create new iso
   # According to https://wiki.debian.org/DebianInstaller/Preseed/EditIso
   #genisoimage -r -J -b isolinux/isolinux.bin -c isolinux/boot.cat \                                                    
@@ -94,24 +90,21 @@ mkiso() {
   #          -o "$iso_fn" "$s_where"/cd
 
   if on_openbsd; then
-    if ! which xorriso >/dev/null 2>&1; then
-      echo mkhybrid on OpenBSD is incompatible with isolinux >&2
-      return 1
-      # Specifically, it needs to do this from libisofs:
-      # int make_boot_info_table(uint8_t *buf, uint32_t pvd_lba, uint32_t boot_lba, uint32_t imgsize)
-      #     info = (struct boot_info_table *) (buf + 8);
-      #     uint32_t checksum = 0;
-      #     int offset = 64;
-      #     for (; offset <= imgsize - 4; offset += 4)
-      #         checksum += iso_read_lsb(buf + offset, 4);
-      #     if (offset != imgsize)
-      #         checksum += iso_read_lsb(buf + offset, imgsize - offset);
-      #     iso_lsb(info->bi_pvd, pvd_lba, 4);   // pvd_lba = t->ms_block + (uint32_t) 16,
-      #     iso_lsb(info->bi_file, boot_lba, 4); // boot_lba = t->bootsrc[idx]->sections[0].block,
-      #     iso_lsb(info->bi_length, imgsize, 4);
-      #     iso_lsb(info->bi_csum, checksum, 4);
-      #     memset(buf + 24, 0, 40);
-    fi
+    which xorriso >/dev/null 2>&1 || die mkhybrid on OpenBSD is incompatible with isolinux
+    # Specifically, it needs to do this from libisofs:
+    # int make_boot_info_table(uint8_t *buf, uint32_t pvd_lba, uint32_t boot_lba, uint32_t imgsize)
+    #     info = (struct boot_info_table *) (buf + 8);
+    #     uint32_t checksum = 0;
+    #     int offset = 64;
+    #     for (; offset <= imgsize - 4; offset += 4)
+    #         checksum += iso_read_lsb(buf + offset, 4);
+    #     if (offset != imgsize)
+    #         checksum += iso_read_lsb(buf + offset, imgsize - offset);
+    #     iso_lsb(info->bi_pvd, pvd_lba, 4);   // pvd_lba = t->ms_block + (uint32_t) 16,
+    #     iso_lsb(info->bi_file, boot_lba, 4); // boot_lba = t->bootsrc[idx]->sections[0].block,
+    #     iso_lsb(info->bi_length, imgsize, 4);
+    #     iso_lsb(info->bi_csum, checksum, 4);
+    #     memset(buf + 24, 0, 40);
 
     xorriso --as mkisofs -f -r -J                      \
       -b isolinux/isolinux.bin -c isolinux/boot.cat    \
@@ -126,7 +119,6 @@ mkiso() {
     # -boot-info-table ... accomodate linux
 
   else
-    echo Unsupported build/target combination >&2
-    return 1
+    die_unsupported build/target combination
   fi
 }

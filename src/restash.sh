@@ -3,8 +3,6 @@
 # hint: restash and push:
 #   restash -n name ~/src/repo | ssh root@100.64.5.3 tar -C stash -xzvf-
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 APP=restash

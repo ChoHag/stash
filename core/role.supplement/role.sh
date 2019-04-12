@@ -6,7 +6,6 @@ role_settings() {
 }
 
 role_apply() {
-  set -e
   if [ -n "$supplement_searched" ] || ! on_firsttime; then return; fi
   role var searched true
   for _from in $(echo "$stash_from" | tr , ' '); do
@@ -33,7 +32,7 @@ role_apply() {
       [ -z "$_r" ] || return $_r
       ;;
 
-    *) ...;;
+    *) die undefined;;
     esac
   done
 }
@@ -53,5 +52,5 @@ _verify_stash() {
     ;;
   gpg) HOME=${HOME:-/root} $_zvexe gpg --verify -- - | tar -C /root/stash -xzf-;;
   *)   die_unsupported verify $sign;;
-  esac || fail verify stash supplement
+  esac
 }

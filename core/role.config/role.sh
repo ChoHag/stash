@@ -14,12 +14,10 @@ role_settings() {
 }
 
 _config_replace() {
-  set -e
   _config_copy -x $2 "/$(echo "${3#$1.}" | sed -r 's|_-\^?|/|g')"
 }
 
 _config_replace_templated() {
-  set -e
   _config_template -X $2 "/$(echo "${3#$1.}" | sed -r 's|_-\^?|/|g')"
 }
 
@@ -55,7 +53,6 @@ config_set_line() {
 }
 
 _config_share() {
-  set +e
   local _dst=$1 _what=
 
   changed_config=
@@ -76,7 +73,6 @@ _config_share() {
 }
 
 _config_take() {
-  set -e
   local _dst=$1 _shared=$2
 
   if _what=$(paired "$config_files" "$_dst"); then
@@ -90,7 +86,6 @@ _config_take() {
 }
 
 _config_copy() {
-  set -e
   local _opt= _required= _src_gen= _tracked= _exclusive= _ex_shared=1
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts rmtxX _opt; do case "$_opt" in
@@ -110,28 +105,26 @@ _config_copy() {
       return
     fi
     LOG_info ... copy ${_tracked:+untracked} ${_exclusive:+exclusively} "$_dst"
-    [ ! -f "$_src" ] && die_unsupported only files for config
+    [ -f "$_src" ] || die role.config supports only single files
 
   else
     _src=$(mktemp)
-    "$_file" > "$_src"
+    "$_file" >"$_src" || die generate "$_src"
   fi
 
   config_changed=
   local _force= ; [ -z "$_exclusive$_tracked" ] || _force=1
-  _r=0
-  _maybe_copy ${_force:+-f} "$_src" "$_dst" "$_mode" "$_own" || _r=$?
+  _maybe_copy ${_force:+-f} "$_src" "$_dst" "$_mode" "$_own"
+  _r=$?
   rm -f "$_src_temp"
   case $_r in
   101) config_changed=copy;;
   102) config_changed=acl;;
   *) return $_r;;
   esac
-  rm -f "$_src_temp"
 }
 
 _config_template() {
-  set -e
   local OPTIND=1 OPTARG= # Bash needs this
   local _opt= _pass= _how=
   while getopts re:txX _opt; do case "$_opt" in
@@ -147,7 +140,6 @@ _config_template() {
 }
 
 _config_line() {
-  set -e
   local _ig= _only= _prepend= _section=
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts i:ops _opt; do case "$_opt" in
@@ -164,7 +156,7 @@ _config_line() {
 
   if [ -n "$_only" ]; then
     if [ ! -e "$_file" -o "$(cat "$_file" | tr -d \\n)" != "$_line" ]; then
-      echo "$_line" > "$_file"
+      echo "$_line" >"$_file" || die append to "$_file"
       # owner/mode? config_changed?
     fi
     return
@@ -177,7 +169,7 @@ _config_line() {
   else
     LOG_info ... include into "$_file"${_section:+" ($_section)"}: "$_line" $_ig
     if ! _config_share "$_file" && [ -z "$_ig" ]; then
-      fail Cannot update file with exclusive owner
+      die "$_file" already has exclusive owner
     fi
     # Easy ones out of the way first
     if [ -z "$_ig$_prepend$_section" ]; then
@@ -194,6 +186,6 @@ _config_line() {
       else                           # at bottom:
         printf '$a\n\n%s\n%s\n.\nw\n' "$_section" "$_line" | ed -s "$_file"
       fi
-    fi
+    fi || die include in "$_file"
   fi
 }

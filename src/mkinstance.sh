@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 . "$LIBSTASH"/lib/libstash-hvm.sh
@@ -49,7 +47,7 @@ _load_hvm $hvm $_transient_here
 
 _mkwhere
 
-_call() { set -e; LOG_info Calling $1; "$@"; }
+_call() { LOG_info Calling $1; "$@"; }
 
 # TODO: This fucks up mkautoiso because of lack of uname (!?)
 # /mkautoiso-posthook.sh: /mnt/root/stash/libstash.sh[344]: uname: not found

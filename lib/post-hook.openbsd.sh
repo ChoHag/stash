@@ -7,7 +7,7 @@ for _label in $_top/root/disklabel.*; do
   [ "${_label%.0}" = "$_label" ] || continue
   LOG_info labelling disc ${_label##*.}
   fdisk -iy sd${_label##*.}
-  disklabel -T $_label -F /tmp/fstab.new -w -A sd${_label##*.}
+  disklabel -T $_label -F /tmp/fstab.new -w -A sd${_label##*.} || die disklabel $_label
   cat /tmp/fstab.new >> $_top/etc/fstab
 done
 
@@ -15,19 +15,19 @@ while read _disc _part _extra; do
   _re=
   if [ $_disc = 0 ]; then umount /dev/sd$_disc$_part; _re=re; fi # already mounted
   LOG_info ${_re}formatting sd$_disc$_part
-  inroot newfs -q $_extra /dev/rsd$_disc$_part
+  inroot newfs -q $_extra /dev/rsd$_disc$_part || die newfs $_disc$_part
 done < $_top/root/format-options
 
 # Fixup networking
 # Network correctly configured by installer except autoinstall doesn't
 # ask for domain name
 _fqdn="%s/${hostname:-changemehost}[a-z.-]*/${hostname:-changemehost}.${domain:-changemedomain}/"
-inroot printf '%s\nw\n' "$_fqdn" | inroot ed -s /etc/myname || true
-inroot printf '%s\nw\n' "$_fqdn" | inroot ed -s /etc/rc.firsttime || true
+inroot printf '%s\nw\n' "$_fqdn" | inroot ed -s /etc/myname 2>/dev/null
+inroot printf '%s\nw\n' "$_fqdn" | inroot ed -s /etc/rc.firsttime 2>/dev/null
 # TODO, perhaps in firsttime? mv /etc/hostname.vio0 to /etc/hostname.<what>0?
 
 # Fixup packaging
-if [ -n "$packages" ]; then inroot pkg_add $packages </dev/null; fi
+if [ -n "$packages" ]; then inroot pkg_add $packages </dev/null || die pkg_add; fi
 
 # Fixup /etc
 rm -f $_top/etc/skel/.Xdefaults

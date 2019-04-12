@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 usage() {
   echo '?'
   exit 1
@@ -59,7 +57,7 @@ save_ramdisc() { :; }
 . "$LIBSTASH"/iso/libiso.build-$(on).sh
 . "$LIBSTASH"/iso/libiso.target-$os_platform.sh
 
-_call() { set -e; LOG_debug Calling $1; "$@"; }
+_call() { LOG_debug Calling $1; "$@"; }
 
 _mp=$(_call mount_iso "$iso_source")
 _call sync_iso

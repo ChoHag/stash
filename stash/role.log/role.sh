@@ -7,5 +7,5 @@ role_settings() {
 }
 
 _syslog_logfile() {
-  ...
+  die undefined
 }

@@ -11,7 +11,6 @@ hvm_create() {
 }
 
 hvm_launch() {
-  set +e
   local _name=$1 _def= _trans=; shift
   [ -z "$(hvm_get_val $_name defined)" ]; _def=$?
   ! hvm_make_transient; _trans=$?
@@ -19,10 +18,7 @@ hvm_launch() {
   local _network= _opt= _ram= _usbo=-r _usbf=cd
   local OPTIND=1 OPTARG= # Bash needs this
   while getopts c:n:r:u _opt; do case "$_opt" in
-  c)
-    echo "SMP is not supported on vmd" >&2
-    return 1
-    ;;
+  c) die_unsupported smp on vmd;;
   n) _network=$OPTARG;;
   r) _ram=$OPTARG;;
   u) _usbo=-d _usbf=disc;; # attach extra disc as usb (vmd: block) instead of cd
@@ -56,11 +52,10 @@ hvm_launch() {
     _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_dir:+$hvm_dir/}tmp/$_extra"};;
   11)
     _hvmd_launch_transient $_name;;
-  esac
+  esac || die launching $_name
 }
 
 hvm_save() {
-  set -e
   local _name=$1 _prepared=$2 _val=
   # Ensure the vm defined by hvm_def_$_name is in vm.conf, correctly,
   # and reload otherwise
@@ -74,10 +69,10 @@ hvm_save() {
 
   if [ -n "$hvm_remote" ]; then
     ssh ${hvm_remote} ${hvm_root} cat /etc/vm.conf >"$s_where"/hvm.old-vm.conf
-    __save_conf() { ssh ${hvm_remote} ${hvm_root} tee /etc/vm.conf <"$1" >/dev/null; _hvmd_vmctl reload; }
+    __save_conf() { ssh ${hvm_remote} ${hvm_root} tee /etc/vm.conf <"$1" >/dev/null && _hvmd_vmctl reload; }
   else
     ${hvm_root} cat /etc/vm.conf >"$s_where"/hvm.old-vm.conf
-    __save_conf() { ${hvm_root} cp "$1" /etc/vm.conf; _hvmd_vmctl reload; }
+    __save_conf() { ${hvm_root} cp "$1" /etc/vm.conf && _hvmd_vmctl reload; }
   fi
 
   # Now do the dance to, if there's a same-$_name vm defined replace it
@@ -85,7 +80,7 @@ hvm_save() {
   local _rx="^vm[[:space:]]+(instance[[:space:]]+\"[^\"]*\"[[:space:]]+)?\"$_name\"[[:space:]]*\\{\$"
   if ! grep -qE "$_rx" <"$s_where"/hvm.old-vm.conf; then
     ( cat "$s_where"/hvm.stanza && echo ) >>"$s_where"/hvm.old-vm.conf
-    __save_conf "$s_where"/hvm.old-vm.conf
+    __save_conf "$s_where"/hvm.old-vm.conf || die failed to save VM configuration
 
   else
     sed -nr "/$_rx/,/^}$/p" <"$s_where"/hvm.old-vm.conf >"$s_where"/hvm.previous
@@ -106,7 +101,7 @@ hvm_save() {
       done >"$s_where"/hvm.new-vm.conf
 
       if ! diff -q "$s_where"/hvm.new-vm.conf "$s_where"/hvm.old-vm.conf >/dev/null 2>&1; then
-        __save_conf "$s_where"/hvm.new-vm.conf
+        __save_conf "$s_where"/hvm.new-vm.conf || die failed to save VM configuration
       fi
     fi # definition has changed
   fi # definition isn't present
@@ -126,29 +121,29 @@ hvm_upload() {
     else
       cp "$_src" "${hvm_dir+$hvm_dir/}tmp/$_name"
     fi
-  fi
+  fi || die uploading to "${hvm_remote:+$hvm_remote:}${hvm_dir:+$hvm_dir/}tmp/$_name"
 }
 
 hvm_wait() {
-  set -e
   hvm_launch "$@"
-  _hvmd_vmctl wait "$1"
+  _hvmd_vmctl wait $1 || die waiting for $1
 }
 
 # Implementation
 
 _hvmd_launch_declared() {
-  set -e
   local _name=$1 _usbf=$2 _extra=$3
   if [ -n "$_extra" ]; then
     hvm_get_all $_name >"$s_where"/hvm.stanza-saved
     hvm_attach_$_usbf $_name "$_extra"
   fi
-  hvm_save $_name
-  [ -n "$(hvm_get_val $_name auto)" ] || _hvmd_vmctl start $_name
+  hvm_save $_name || return $?
+  if [ -n "$(hvm_get_val $_name auto)" ]; then
+   _hvmd_vmctl start $_name || return $?
+  fi
   if [ -n "$_extra" ]; then
     eval "$(cat "$s_where"/hvm.stanza-saved)"
-    hvm_save $_name
+    hvm_save $_name || return $?
   fi
 }
 

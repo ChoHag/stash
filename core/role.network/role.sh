@@ -12,12 +12,11 @@ role_settings() {
 }
 
 role_apply() {
-  set -e
   if on_firsttime; then
     find /etc -type f | xargs grep -l changeme | while read f; do
       LOG_info ... host name in $f
-      [ -n "$hostname" ] && printf '/changemehost/s//%s/\nw\n' $hostname | ed -s $f 2>/dev/null || true
-      [ -n "$domain"   ] && printf '/changemedomain/s//%s/\nw\n' $domain | ed -s $f 2>/dev/null || true
+      [ -n "$hostname" ] && printf '/changemehost/s//%s/\nw\n' $hostname | ed -s $f 2>/dev/null
+      [ -n "$domain"   ] && printf '/changemedomain/s//%s/\nw\n' $domain | ed -s $f 2>/dev/null
     done
     if on_openbsd; then
       hostname $(cat /etc/myname) || LOG_warning cannot set hostname live
@@ -42,8 +41,8 @@ role_apply() {
   fi
 
   if [ -n "$_changed" ]; then
-    if on_openbsd; then sh /etc/netstart
-    else ...; fi
+    if on_openbsd; then sh /etc/netstart || die bringing up network
+    else die undefined; fi
   fi
 }
 
@@ -68,7 +67,7 @@ network_ifconfig() {
   LOG_info ... network device "$_dev"
   if _what=$(paired "$network_devices" "$_dev"); then
     if [ "$_what" != "$running_role" ]; then
-      fail $running_role has already configured "$_dev"
+      die $running_role has already configured "$_dev"
     fi
     # Continue as normal in case the supplement has changed it but
     # don't append to $network_devices again.
@@ -77,7 +76,7 @@ network_ifconfig() {
   fi
   case "$_model" in
   simple) stash config template "$_src" "$_dst";;
-  *) ...;;
+  *) die undefined;;
   esac
   _r=$?
   network_changed=${config_changed:+yes}

@@ -9,18 +9,24 @@
 _role_import() {
   # TODO: Consider using copy_function to save loaded methods and not
   # have to keep recompiling.
-  [ -d "$stash/role.$running_role" ] || return 1
+  [ -e "$stash/role.$running_role/role.sh" ] || die no role $running_role
   role_apply() { :; }
   role_settings() { :; }
-  . "$stash/role.$running_role/role.sh"; _r=$?
+  . "$stash/role.$running_role/role.sh" || die error while loading "$repo/role.$running_role"
+  copy_function role_apply role_apply_real
+  role_apply() {
+    set -e
+    role_apply_real "$@" || die apply role
+    set +e
+  }
   copy_function role_settings role_settings_real
   role_settings() {
     set -e
-    role_settings_real "$@"
+    role_settings_real "$@" || die role settings
+    set +e
     _env_load "$loaded_env"
   }
   eval role_depends_$running_role_id=
-  return $_r
 }
 
 role_depends() { eval "echo \$role_depends_$running_role_id"; }
@@ -28,7 +34,6 @@ role_depends() { eval "echo \$role_depends_$running_role_id"; }
 _role_load() {
   local running_role=${1:?No role} running_role_id=$(echo "$1" | tr - _)
   contains "$loaded_roles" $_role && return 0
-  set -e
   LOG_notice "Loading role $running_role"
   # The first time a role is loaded, clear out its namespace
   for _v in $(set | grep "^${running_role_id}_.*=" | cut -d= -f1); do unset $_v; done
@@ -39,7 +44,6 @@ _role_load() {
 }
 
 _role_settings() {
-  set -e
   for _role; do
     local running_role=$_role running_role_id=$(echo "$_role" | tr - _)
     _role_import
@@ -48,7 +52,6 @@ _role_settings() {
 }
 
 _role_do_method() {
-  set -e
   local _role=$1 _method=$2
   shift; shift
   for _can in $s_can_method; do
@@ -57,22 +60,23 @@ _role_do_method() {
       return $?
     fi
   done
-  fail Method "$_method" not found in "$_role"
+  die method "$_method" not found in "$_role"
 }
 
 _role_each_file() {
-  set -e
   local _filetype=$1 _role=$2 _method=$3
   for _file in "$stash/role.$running_role/$_filetype".*; do
     [ "$_file" != "$stash/role.$running_role/$_filetype.*" ] || break
     _name=${_file#$stash/role.$running_role/$_filetype.}
     [ -e env.$loaded_env/"$_name" ] && _file=env.$loaded_env/"$_name"
-    "$_method" "$_filetype" "${_file#$stash/role.$running_role/}" "$_name"
+    if "$_method" "$_filetype" "${_file#$stash/role.$running_role/}" "$_name"; then :
+    else
+      die apply file "$_file" by $_role "($?)"
+    fi
   done
 }
 
 _role_finish() {
-  set -e
   for _each_role in $loaded_roles; do
     LOG_notice "Applying $_each_role"
     for _spec in $s_can_file; do
@@ -83,18 +87,13 @@ _role_finish() {
     done
     local running_role=$_each_role running_role_id=$(echo "$_each_role" | tr - _)
     _role_import "$_each_role"
-    if role_apply; then :; else
-      _r=$?
-      LOG_error "Failed to apply $_each_role; aborting"
-      return $_r
-    fi
+    role_apply || die error applying $_each_role
   done
 }
 
 #
 
 role() {
-  set -e
   local _how=$1
   shift
   case "$_how" in
@@ -112,7 +111,7 @@ role() {
     _role_set_var "$@"
     ;;
   *)
-    fail Unknown role command "$_how"
+    die unknown role command "$_how"
     ;;
   esac
 }

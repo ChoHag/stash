@@ -119,12 +119,24 @@ quiet_log() {
   do _make_logger $_lv; done
 }
 
-die_unsupported() {
-  LOG_error 'Unsupported platform'${@:+": $@"} # Surprisingly, this works well.
-  exit 1
+die() {
+  if [ "$1" != "${1#-}" ]; then
+    eval local _code=\${ex_${1#-}:-255}
+    shift
+    set -- "${1#-}:" "$@"
+  else
+    local _code=1
+  fi
+  LOG_error Failed: "$@"\; aborting
+  exit $_code
 }
-
-fail() { LOG_error "$@"; exit 1; }
+die_unsupported() { # DEPRECATE
+  die unsupported platform${@:+": $@"} # Surprisingly, this works well.
+}
+fail() { # DEPRECATE
+  ex_unknown=$?; [ $ex_unknown -eq 0 ] && ex_unknown=1
+  die -unknown "$@"
+}
 
 [ "$stash" != "${stash#/}" ] || fail "'stash' must be an absolute path"
 
@@ -165,8 +177,8 @@ want_systemd() { die_unsupported; }
 
 set_cli() { for _var in $cli; do eval $_var=\$cli__$_var; done; }
 cli() {
-  if [ -z "$2" -a "$1" != "${1#[ 	]*}" ]; then
-    fail Invalid whitespace
+  if [ -z "$3" -a "$2" != "${2#[ 	]*}" ]; then
+    die invalid whitespace
   fi
   cli="$cli $1"
   eval "cli__$1=\$2"
@@ -184,7 +196,6 @@ runcli() {
 }
 
 stash() {
-  set -e
   local _how=$1
   shift
   case "$_how" in
@@ -224,18 +235,29 @@ remember() {
   done
 }
 
-chmkdir() { _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift;
-            mkdir -p "$@"; [ -n "$_o" ] && chown $_o "$@"; chmod $_m "$@"; }
-chtouch() { _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift;
-            touch "$@"; [ -n "$_o" ] && chown $_o "$@"; chmod $_m "$@"; }
+chmkdir() {
+  local _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift
+  mkdir -p "$@" || die mkdir "$@"
+  if [ -n "$_o" ]; then chown $_o "$@" || die chown "$@"; fi
+  chmod $_m "$@" || die chmod "$@"
+}
+chtouch() {
+  local _m=$1; shift; [ -n "$2" ] && local _o=$1 && shift
+  touch "$@" || die touch "$@"
+  if [ -n "$_o" ]; then chown $_o "$@" || die chown "$@"; fi
+  chmod $_m "$@" || die chmod "$@"
+}
 
 # This relies on the fact that the first time stash is run, type will
 # not be created until it's finished.
 on_firsttime() { ! [ -e /etc/stash/type ]; }
 
 get_fslayout() {
-  if [ -e "$os_fslayout" ]; then cat "$os_fslayout"
-  else cat "$LIBSTASH"/iso/layout.$(want)-"$os_fslayout"; fi
+  if [ -e "$os_fslayout" ]; then
+    cat "$os_fslayout"
+  else
+    cat "$LIBSTASH"/iso/layout.$(want)-"$os_fslayout"
+  fi || die missing fs layout "$os_fslayout"
 }
 
 _get_on() {
@@ -261,23 +283,22 @@ _stash_find_repo_file() {
 }
 
 _stash_id() {
-  set -e
-  [ -e $stash/id ] || fail No stash ID in $stash/id
+  [ -e $stash/id ] || die missing ID $stash/id
   LOG_notice Loading identity from $stash/id
   local _pre_environment=$environment _pre_env=$env
-  . $stash/id
+  . $stash/id || die parsing ID $stash/id
   local _env=${role#*/} _role=$role
   role=${role%%/*}
   if [ -z "$role" ]; then # also warn if role has changed? hostname etc.?
-    fail No role; exit 1
+    die no role in ID $stash/id
   elif [ -n "$env" -a "$env" != "$_pre_env" ]; then
-    fail env invalid in stash/id; exit 1
+    die \$env found while parsing ID $stash/id
   elif [ -n "$_pre_environment" -a "$environment" != "$_pre_environment" ]; then
-    fail New stash ID changed environment; exit 1
+    die \$envivironment changed while parsing ID $stash/id
   elif [ -n "$_env" -a "$_env" = "$_role" ]; then
     _env=
   elif [ -n "$_env" -a -n "$_pre_environment" -a "$_env" != "$_pre_environment" ]; then
-    fail Unexpected environment: $_env; exit 1
+    die unexpected environment: $_env
   fi
   : ${_env:=${_pre_environment:-$default_environment}}
   env=$_env environment=$_env
@@ -325,27 +346,23 @@ _stash_save() {
 }
 
 _maybe_copy() {
-  set -e
   if [ "$1" = -f ]; then _force=1; shift; else _force= ; fi
   local _src=$1 _dst=$2 _mode=${3:-0444} _own=${4:-0:0}
 
   if [ -n "$_force" -o ! -e "$_dst" ] || ! diff -q "$_src" "$_dst" > /dev/null 2>&1; then
     chtouch $_mode $_own "$_dst"
-    cat "$_src" > "$_dst"
+    cat "$_src" > "$_dst" || die write "$_dst"
     return 101
   else
     # test first? *_changed=acl
-    chown $_own "$_dst"
-    chmod $_mode "$_dst"
+    chown $_own "$_dst" || die chown "$_dst"
+    chmod $_mode "$_dst" || die chmod "$_dst"
   fi
 }
 
 _mkwhere() {
-  if [ "$s_where" != /tmp/nowhere ]; then
-    fail Attempt to set s_where twice
-    exit 1
-  fi
-  s_where=$(mktemp -d ${s_wherein:+-p "$s_wherein"})
+  [ "$s_where" = /tmp/nowhere ] || die attempted to set s_where twice
+  s_where=$(mktemp -d ${s_wherein:+-p "$s_wherein"} || die mktemp ${s_wherein:+"($s_wherein)"})
   cleanup_nodebug() { rm -fr "$s_where" & }
   atexit cleanup_nodebug
 }

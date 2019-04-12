@@ -11,7 +11,6 @@ _hook_append_firsttime() {
 }
 
 prepare_hook() {
-  set -e
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
   _top=/mnt
   if want_deb; then _top=/target; fi
@@ -46,7 +45,6 @@ HOOK
 }
 
 prepare_fixup() {
-  set -e
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
 
   # First some os-specific customisation & defaults
@@ -65,6 +63,7 @@ prepare_fixup() {
         *)   echo "$_line";;
         esac
       done >> "$s_where"/payload/disklabel.$_disc 2>> "$s_where"/payload/format-options
+      [ -s "$s_where"/payload/disklabel.$_disc ] || die parsing disklabel "$os_fslayout"
       _disc=$(($disc+1))
     done
 
@@ -85,7 +84,7 @@ prepare_fixup() {
 
   elif want_centos; then
     # if clone and lvm, unique uuid
-    if [ -n "$debug" ]; then echo 'cp /ks.cfg /tmp/hookfiles ||:' | _hook_append_pre; fi
+    if [ -n "$debug" ]; then echo 'cp /ks.cfg /tmp/hookfiles' | _hook_append_pre; fi
     if [ -n "$_clone" ]; then echo yum -y upgrade | _hook_append_firsttime; fi
     _hook_append < "$LIBSTASH"/lib/post-hook.centos.sh
 
@@ -94,7 +93,7 @@ prepare_fixup() {
     # update, upgrade, install to firsttime
     # if clone and lvm, unique uuid in firsttime
     # if clone, ssh keys in firsttime
-    if [ -n "$debug" ]; then echo 'cp /preseed.cfg /tmp/hookfiles ||:' | _hook_append_pre; fi
+    if [ -n "$debug" ]; then echo 'cp /preseed.cfg /tmp/hookfiles' | _hook_append_pre; fi
     echo 'inroot() { in-target "$@"; }' | _hook_append
     cp "$LIBSTASH"/lib/rc.local.firsttime "$s_where"/payload/rc.local.firsttime
     if [ -n "$_clone" ]; then
@@ -130,7 +129,6 @@ EOF
 }
 
 build_userdata() {
-  set -e
   # This function might be piped into build_iso or boot_2 so could bypass -e;
   # error-check explicitly.
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
@@ -139,7 +137,7 @@ build_userdata() {
       ${s_wherein:+-w "$s_wherein"} \
       ${envdir:+-e $envdir}         \
       -n $hostname ${id:+-i $id}    \
-      -r $role "$@"
+      -r $role "$@" || die mkstash userdata
   }
   if [ "$stash_from" = iso -o -z "$sign" ]; then
     _stash -s '' -S "$sign" -o- "$@"
@@ -149,7 +147,6 @@ build_userdata() {
 }
 
 build_iso() {
-  set -e
   # This function might be piped into boot_1 so could bypass -e;
   # error-check explicitly.
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
@@ -162,18 +159,18 @@ build_iso() {
   fi
 
   if [ "$stash_from" = iso ]; then
-    [ -z "$_userdata" ] && fail userdata
+    [ -n "$_userdata" ] || die no userdata for one-shot iso
     cat "$_userdata" > "$s_where"/payload/stash.tgz
   elif [ "$stash_from" != script-only ]; then
     runcli mkstash ${debug:+-D}     \
       ${s_wherein:+-w "$s_wherein"} \
       ${envdir:+-e $envdir}         \
       ${stash_from:+-f $stash_from} \
-      -s '' -S "$sign" -o "$s_where"/payload/stash.tgz -O
+      -s '' -S "$sign" -o "$s_where"/payload/stash.tgz -O || die mkstash core
   fi
 
   ( cd "$s_where"/payload; find . -type f | tar -cf- -I- ) \
-    > "$s_where"/installer-payload || fail tar payload
+    > "$s_where"/installer-payload || die building payload archive
 
   _name=${hostname:-${fqdn%%.*}}.${domain:-${fqdn#*.}}
 
@@ -190,11 +187,10 @@ build_iso() {
     -B "$s_where"/installer-pre-hook           \
     -A "$s_where"/installer-post-hook          \
     -Y "$s_where"/installer-payload            \
-    "$@" || fail mkautoiso
+    "$@" || die mkautoiso
 }
 
 boot_1() { # reads stdin
-  set -e
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
   _auto_iso=$1; shift
   _vmname=$env-${1:-$hostname${id:+-$id}}
@@ -215,7 +211,6 @@ boot_1() { # reads stdin
 }
 
 boot_2() {
-  set -e
   local _clone= _stashname= _vmname= _toeval=
   if [ "$1" = --clone ]; then _clone=1; shift; fi
   if [ "$stash_from" != iso ]; then _userdata=$1; shift; fi
@@ -246,15 +241,15 @@ boot_2() {
       case "$stash_from" in
       usb:*) hvm_upload $_stashname <${stash_from#usb:};;
       usb)
-        root "$(which mkstashfs)" <"$_userdata" >"$s_where"/usb.img
+        root "$(which mkstashfs)" <"$_userdata" >"$s_where"/usb.img || die mkstashfs
         hvm_upload $_stashname <"$s_where"/usb.img
         ;;
-      *) ...;;
+      *) die undefined;;
       esac
       hvm_wait "$@" -u $_stashname
       ;;
-    http:*|https:*) ... ;;
-    pxe)...;;
+    http:*|https:*) die undefined;;
+    pxe) die undefined;;
     *);;
     esac
   fi

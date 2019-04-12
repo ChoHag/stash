@@ -7,5 +7,5 @@ role_settings() {
 }
 
 _cron_register_crontab() {
-  ...
+  die undefined
 }

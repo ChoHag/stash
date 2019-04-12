@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 . "$LIBSTASH"/lib/libstash-mk.sh
@@ -42,7 +40,7 @@ mkdir -p "$s_where"/stash
 
 # Library
 ( cd "$LIBSTASH"; find . -maxdepth 1 -type f -name lib\* ) \
-  | tar -C "$LIBSTASH" -cf- -I- | tar -C "$s_where"/stash -xf-
+  | tar -C "$LIBSTASH" -cf- -I- | tar -C "$s_where"/stash -xf- || die stash library
 
 _completed=
 got() { for _m in $_completed; do [ "$_m" = "$1" ] && return 0; done; return 1; }
@@ -55,14 +53,14 @@ install_stash() {
   if [ ! -e "$_dst" ]; then
     # Simple case
     LOG_debug Stashing "$_name" from "${_src%/$_name}"
-    tar -C "${_src%/*}" -cf- "${_src##*/}" | tar -C "$s_where"/stash -xf-
+    tar -C "${_src%/*}" -cf- "${_src##*/}" | tar -C "$s_where"/stash -xf- || die stash "$_src"
     [ -e "$_dst/complete" ] && rm "$_dst/complete" && append_var _completed "$_name"
   else
-    if [ -f "$_dst" -a -d "$_src" ]; then fail Cannot replace file with directory
-    elif [ -f "$_src" ]; then fail Cannot replace anything with file
+    if [ -f "$_dst" -a -d "$_src" ]; then die cannot replace file with directory
+    elif [ -f "$_src" ]; then die cannot replace anything with file
     else
       for _from in "$_src"/.* "$_src"/*; do
-        case "$_from" in
+        case "$_from" in # Last statement in each case's return value matters
         *~|*.bak|*/\#*|"${envdir%/}/${_from##*/}") continue;;
         "$_src/."|"$_src/.."|"$_src/.*"|"$_src/*"|*~) continue;;
         "$_src/complete") append_var _completed "$_name";;
@@ -71,11 +69,14 @@ install_stash() {
           LOG_debug Stashing .../"${_from#$_src/}" from "$_src"
           if [ -e "$_dst"/${_from##*/} ]; then
             _tail=$(mktemp -p "$_dst" ${_from##*/}.XXXXXX)
-            mv "$_dst"/${_from##*/} "$_tail"
-            cp "$_from" "$_dst"
-            echo "# End of ${_from%/${_from##*/}}" >> "$_dst"/${_from##*/}
-            cat "$_tail" >> "$_dst"/${_from##*/}
-            rm "$_tail"
+            (
+              set -e
+              mv "$_dst"/${_from##*/} "$_tail"
+              cp "$_from" "$_dst"
+              echo "# End of ${_from%/${_from##*/}}" >> "$_dst"/${_from##*/}
+              cat "$_tail" >> "$_dst"/${_from##*/}
+              rm "$_tail"
+            )
           else
             cp "$_from" "$_dst"
           fi
@@ -84,7 +85,7 @@ install_stash() {
           LOG_debug Stashing .../"${_from#$_src/}" from "$_src"
           tar -C "${_src}" -cf- "${_from#$_src/}" | tar -C "$_dst" -xf-
           ;;
-        esac
+        esac || die stash "$_from"
       done
     fi
   fi
@@ -119,7 +120,7 @@ for _dir in "$@" ${_withcore:+"$LIBSTASH"} "$LIBSTASH"/lib; do
   fi
 done
 [ -e "$s_where"/stash/run ] || cp "$LIBSTASH"/run.sh "$s_where"/stash/run
-chmod 755 "$s_where"/stash/run
+chmod 755 "$s_where"/stash/run || die stash run.sh
 
 (
   if [ -n "$role" ]; then
@@ -156,6 +157,6 @@ sign() {
 
 cd "$s_where"/stash
 [ -n "$outfile" ] && exec > "$outfile"
+LOG_debug Stashed contents are available in "$s_where"/stash
 find . -mindepth 1 -type f -a \! \( -name \*~ -o -name \*.bak -o -name \#\* \) \
   | tar -I- -cf - | gzip -c$_compression | sign
-LOG_debug Stashed contents are available in "$s_where"/stash

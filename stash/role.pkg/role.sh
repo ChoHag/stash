@@ -18,16 +18,14 @@ role_settings() {
 }
 
 _pkg_install() {
-  set -e
   [ -n "$pkg_started" ] || fail Cannot install packages in early environment
-  if on_openbsd; then pkg_add -Imz "$@"; fi
+  if on_openbsd; then pkg_add -Imz "$@" || die pkg_add "$@"; fi
   append_var pkg_installed "$@"
 }
 
 _pkg_install_later() { append_var pkg_need "$@"; }
 
 role_apply() {
-  set -e
   if on_openbsd; then
     on_firsttime && > /etc/installurl
     stash config line "$pkg_repository" /etc/installurl

@@ -4,7 +4,6 @@
 : ${os_version:=$(echo "$iso_source" | sed 's/.*CentOS-\([0-9][0-9]*\)-x86_64.*/\1/')}
 
 fiddle_serial() {
-  set -e
   # Enable the serial port
   grep -v ^# <<'EOF' | grep . | ed -s "$s_where"/cd/isolinux/isolinux.cfg
 # Keep _some_ delay in case some idiot boots from this iso.
@@ -40,7 +39,6 @@ EOF
 #   ? repo
 #   ? packages
 fiddle_autoinstall() { # inc. layout, halt
-  set -e
   if [ -e "$LIBSTASH"/iso/installer.devuan-$os_version ]; then
     cp "$LIBSTASH"/iso/installer.devuan-$os_version "$s_where"/cd/ks.cfg
   else
@@ -49,7 +47,6 @@ fiddle_autoinstall() { # inc. layout, halt
 }
 
 fiddle_hooks() {
-  set -e
   [ -n "$iso_payload" ] && cp "$iso_payload" "$s_where"/cd/payload
   [ -n "$iso_pre_hook" ] && cp "$iso_pre_hook" "$s_where"/cd/mkautoiso-prehook.sh
   [ -n "$iso_post_hook" ] && cp "$iso_post_hook" "$s_where"/cd/mkautoiso-posthook.sh
@@ -58,7 +55,6 @@ fiddle_hooks() {
 }
 
 mkiso() {
-  set -e
   # From god-knows s_where:
   # mkisofs -o "$s_where"/auto.iso  \
   #   -b isolinux/isolinux.bin    \
@@ -71,11 +67,7 @@ mkiso() {
   #   "$s_where"/cd
 
   if on_openbsd; then
-    if ! which xorriso >/dev/null 2>&1; then
-      echo mkhybrid on OpenBSD is incompatible with isolinux >&2
-      return 1
-    fi
-
+    which xorriso >/dev/null 2>&1 || die mkhybrid on OpenBSD is incompatible with isolinux
     xorriso --as mkisofs -f -RJT                       \
       -V "CentOS $os_version x86_64"                   \
       -b isolinux/isolinux.bin -c isolinux/boot.cat    \
@@ -83,7 +75,6 @@ mkiso() {
       -o "$iso_fn" "$s_where"/cd
 
   else
-    echo Unsupported build/target combination >&2
-    return 1
+    die_unsupported build/target combination
   fi
 }

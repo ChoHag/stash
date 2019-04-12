@@ -212,7 +212,6 @@ there's no need to start the daemon in the role):
   # Documentation goes here
 
   role_apply() {
-    set -e
     pkg_add squid
     echo 'cache_dir ufs /var/squid/cache 4096 16 256' >> /etc/squid/squid.conf
     /usr/local/sbin/squid -Nz
@@ -228,7 +227,6 @@ But to take the most advantage of stash it would actually be written like this:
   role_settings() { stash pkg need squid; } # nb. 'need' in settings, 'install' in apply.
 
   role_apply() {
-    set -e
     stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
     on_firsttime && /usr/local/sbin/squid -Nz
     stash daemon enable squid
@@ -296,7 +294,6 @@ But first a review:
       # Documentation goes here
       role_settings() { stash pkg need squid; }
       role_apply() {
-        set -e
         stash config line 'cache_dir ufs /var/squid/cache 4096 16 256' /etc/squid/squid.conf
         on_firsttime && /usr/local/sbin/squid -Nz
         stash daemon enable squid
@@ -334,7 +331,6 @@ But first a review:
       #!sh
       role_settings() { role depends peria; }
       role_apply() {
-        set -e
         stash config template sht.hostname.simple /etc/hostname.vio0
       }
 

@@ -23,16 +23,16 @@ _env_load() {
   if [ -e "$repo/org.sh" ]; then
     . "$repo/org.sh"; _r=$?
     if [ "$_r" != 0 -o \( -n "$_old_env" -a "$env" != "$_old_env" \) ]; then
-      fail Invalid organisation "$repo"
+      die invalid organisation "$repo"
     fi
   fi
   [ -e "$repo/env.$_loading_env/env.sh" ] || return 0
   env_apply() { :; }
-  . "$repo/env.$_loading_env/env.sh"; _r=$?
-  if [ "$_r" != 0 -o -z "$env" -o \( -n "$_old_env" -a "$env" != "$_old_env" \) ]; then
-    fail Invalid environment "$repo/env.$_loading_env/env.sh"
+  . "$repo/env.$_loading_env/env.sh" || die error while loading "$repo/env.$_loading_env"
+  if [ -z "$env" -o \( -n "$_old_env" -a "$env" != "$_old_env" \) ]; then
+    die \$env incorrectly defined in "$repo/env.$_loading_env"
   fi
-  [ -z "$loaded_env" ] && LOG_notice "Loaded environment $_loading_env"
+  [ -z "$loaded_env" ] && LOG_notice Loaded environment $_loading_env
   loaded_env=$_loading_env
 }
 
@@ -47,7 +47,7 @@ find_environment() { # get $env and $envdir from $envdir
     env=$envdir
     envdir="$repo/env.$env"; cli envdir "$envdir"
   elif [ -n "$envdir" ]; then
-    fail Cannot find environment $envdir
+    die cannot find environment $envdir
   fi
   _env_load "$env"
   set_cli

@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 . "$LIBSTASH"/lib/libstash-hvm.sh
@@ -55,15 +53,12 @@ find_environment
 
 if [ "$iso_source" = - ]; then iso_source= ; fi
 
-if [ "$hvm" = aws ]; then
-  echo "Cannot run mkvm for aws; use mkclone & mkinstance" >&2
-  exit 1
-fi
+[ "$hvm" = aws ] && die cannot run mkvm for aws\; use mkclone \& mkinstance
 _load_hvm $hvm $_transient_here
 
 _mkwhere
 
-_call() { set -e; LOG_debug Calling $1; "$@"; }
+_call() { LOG_debug Calling $1; "$@"; }
 
 # TODO: Don't use fifos; they're weird
 _call prepare_hook

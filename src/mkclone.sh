@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 : ${LIBSTASH:=$PWD} # /usr/local/share/stash
 . "$LIBSTASH"/libstash.sh
 . "$LIBSTASH"/lib/libstash-hvm.sh
@@ -51,11 +49,11 @@ _load_hvm $hvm transient
 
 _mkwhere
 
-_call() { set -e; LOG_info Calling $1; "$@"; }
+_call() { LOG_info Calling $1; "$@"; }
 
 # TODO: Don't use fifos; they're weird
 _call prepare_hook --clone
 _call prepare_fixup --clone
 
 _call build_iso > "$s_where"/iso
-_call boot_1 "$s_where"/iso "$_clonename" || fail boot_1
+_call boot_1 "$s_where"/iso "$_clonename"

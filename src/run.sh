@@ -4,19 +4,17 @@
 [ -z "$SH_VERSION" ] && which ksh >/dev/null 2>&1 && exec ksh "$0" "$@"
 [ -z "${SH_VERSION:-$BASH_VERSION}" ] && which bash >/dev/null 2>&1 && exec bash "$0" "$@"
 
-set -e
-
 : ${LIBSTASH:=${stash:=$(dirname -- "$0")}}
 
 runinit() {
-  . "$LIBSTASH"/libstash.sh
+  . "$LIBSTASH"/libstash.sh || { echo Cannot find stash >&2; exit 1; }
   repo=$LIBSTASH
   if [ -e /etc/stash/type ]; then
-    . /etc/stash/type
+    . /etc/stash/type || die loading previous stash settings
     loaded_roles= loaded_env=
     hostname=${fqdn%%.*} domain=${fqdn#*.}
   elif [ -e "$stash"/id ]; then
-    . "$stash"/id # skip _stash_id's verification # TODO: make it optional
+    . "$stash"/id || die loading id "$stash"/id # skip _stash_id's verification # TODO: make it optional
   fi
   if [ -n "$environment" ]; then
     LOG_notice Loading environment definition
