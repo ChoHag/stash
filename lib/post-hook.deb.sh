@@ -27,31 +27,27 @@ _apt() {
   inroot debconf-apt-progress --no-progress --logstderr -- apt-get -q -y "$@"
 }
 
-#</dev/null inroot apt-get -y --purge remove nano
-#</dev/null inroot apt-get update
-#</dev/null inroot apt-get -y dist-upgrade
-#apt-install --allow-remove
 _apt update
 _apt dist-upgrade
 _apt --purge install \
-nano-           \
-bc              \
-ed              \
-ifupdown        \
-iotop           \
-isc-dhcp-client \
-less            \
-logrotate       \
-lvm2            \
-man             \
-net-tools       \
-netcat-openbsd  \
-nvi             \
-perl            \
-rsyslog         \
-tcpdump         \
-telnet          \
-tmux
+  nano-              \
+  bc                 \
+  ed                 \
+  ifupdown           \
+  iotop              \
+  isc-dhcp-client    \
+  less               \
+  logrotate          \
+  lvm2               \
+  man                \
+  net-tools          \
+  netcat-openbsd     \
+  nvi                \
+  perl               \
+  rsyslog            \
+  tcpdump            \
+  telnet             \
+  tmux
 
 # Fixup boot
 # Configure kernel & boot loader (amazon only 'supports' grub)
@@ -63,13 +59,15 @@ fi
 
 # TODO: fsopts for /
 cat > $_top/etc/default/grub <<'EOF'
+GRUB_CMDLINE_LINUX="rootflags=noatime,nodiratime,data=journal,errors=remount-ro console=ttyS0,115200n8"
+GRUB_CMDLINE_LINUX_DEFAULT=""
 GRUB_DEFAULT=0
-GRUB_TIMEOUT=3
-GRUB_DISTRIBUTOR=Debian
 GRUB_DISABLE_LINUX_UUID=true
 GRUB_DISABLE_RECOVERY=true
-GRUB_CMDLINE_LINUX_DEFAULT=""
-GRUB_CMDLINE_LINUX="rootflags=noatime,nodiratime,data=journal,errors=remount-ro console=ttyS0,115200n8"
+GRUB_DISTRIBUTOR=Debian
+GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"
+GRUB_TERMINAL="console serial"
+GRUB_TIMEOUT=3
 EOF
 inroot update-grub
 
@@ -80,7 +78,7 @@ inroot ed -s /etc/inittab <<'EOF'
 #
 # Enable serial port tty
 /#.*ttyS0/s/#*//
-/9600/s//115200/
+s/9600/115200/
 #
 w
 EOF

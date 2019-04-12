@@ -162,17 +162,17 @@ _hvmd_launch_transient() {
   # No cores on vmd
   _val=$(hvm_get_val $_name disc_count) _cnt=0
   while [ $_cnt -lt ${_max:-0} ]; do
-    set -- "$@" -d "$(hvm_get_val $_name disc_${_cnt}_path)";
+    set -- "$@" -d "$(hvm_get_val $_name disc_${_cnt}_path)"
     _cnt=$(($_cnt + 1))
   done
   _val=$(hvm_get_val $_name cd_count) _cnt=0
   while [ $_cnt -lt ${_max:-0} ]; do
-    set -- "$@" -r "$(hvm_get_val $_name cd_${_cnt}_path)";
+    set -- "$@" -r "$(hvm_get_val $_name cd_${_cnt}_path)"
     _cnt=$(($_cnt + 1))
   done
   _val=$(hvm_get_val $_name usb_count) _cnt=0
   while [ $_cnt -lt ${_max:-0} ]; do # usb as regular disc until vmd gets usb support
-    set -- "$@" -d "$(hvm_get_val $_name usb_${_cnt}_path)";
+    set -- "$@" -d "$(hvm_get_val $_name usb_${_cnt}_path)"
     _cnt=$(($_cnt + 1))
   done
   _val=$(hvm_get_val $_name local_count) _cnt=0
@@ -184,7 +184,7 @@ _hvmd_launch_transient() {
   _val=$(hvm_get_val $_name bridged_count) _cnt=0
   _net=$(($_net+${_val:-0}))
   while [ $_cnt -lt ${_max:-0} ]; do
-    set -- "$@" -n "$(hvm_get_val $_name bridged_${_cnt}_settings)";
+    set -- "$@" -n "$(hvm_get_val $_name bridged_${_cnt}_settings)"
     _cnt=$(($_cnt + 1))
   done
   _val=$(hvm_get_val $_name misc_count)

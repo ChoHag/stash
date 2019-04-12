@@ -25,18 +25,19 @@ label auto
 EOF
 }
 
-#   ? terms might be customised by mkautofs into appropriate variables
+# x - done; y - maybe done
+# ? terms might be customised by mkautofs into appropriate variables
 # y ? changemehost.changemedomain
 # y dhcp
 #   no ipv6
-#   ? root password (not ssh)
+# y ? root password (not ssh)
 #   [future: ssh pubkey]
-# y serial console 115200n8
+# x serial console 115200n8
 # x no user
 # x UTC
-#   layout (default 1 disc, wipe)
-#   ? proxy
-#   ? repo
+# y layout (default 1 disc, wipe)
+# y ? proxy
+# y ? repo
 #   ? packages
 fiddle_autoinstall() { # inc. layout, halt
   set -e
@@ -59,7 +60,7 @@ fiddle_autoinstall() { # inc. layout, halt
                              echo "g/mirror.http.hostname/s/[^[:space:]]*$/$remote_host/"
                              echo "g/mirror.http.directory/s|[^[:space:]]*$|/$remote_path|"
     fi
-    [ -n "$iso_rootpw"  ] && echo "g/root-password-crypted/s/[^[:space:]]*$/$iso_rootpw/"
+    [ -n "$iso_rootpw"  ] && echo "g/root-password-crypted/s|[^[:space:]]*$|$iso_rootpw|"
     echo w
   ) | ed -s "$s_where"/ramdiscd/preseed.cfg >&2
     # console not on ttyS0

@@ -18,6 +18,12 @@ prepare_hook() {
   mkdir -p "$s_where"/payload/stash
   echo '#!/bin/sh' > "$s_where"/installer-pre-hook
   echo '#!/bin/sh' > "$s_where"/installer-post-hook
+  if want_deb; then
+    echo "sed s/^EOFEOF/EOF/ >/mkautoiso-partmouse.sh <<'EOF'"
+    sed 's/^EOF/&&/' <"$LIBSTASH"/lib/partmouse.sh
+    echo EOF
+    echo chmod 755 /mkautoiso-partmouse.sh
+  fi | _hook_append_pre
   echo _top=$_top | _hook_append # To reduce quoting pain
   if [ -n "$debug" ]; then
     _hook_append_pre <<'HOOK'
@@ -26,6 +32,9 @@ cp /payload /tmp/hookfiles
 cp /mkautoiso-prehook.sh /tmp/hookfiles
 cp /mkautoiso-posthook.sh /tmp/hookfiles
 HOOK
+    if want_deb; then
+      echo cp /mkautoiso-partmouse.sh /tmp/hookfiles | _hook_append_pre
+    fi
     echo 'cp $_top/etc/rc.firsttime /tmp/hookfiles/rc.firsttime.before' | _hook_append
   fi
 
@@ -115,7 +124,9 @@ fi
 EOF
 
   # Final os-specific customisation
-  if want_openbsd; then echo halt -p | _hook_append; fi
+  if want_openbsd; then
+    if [ "$hvm" = nbsvm ]; then echo reboot; else echo halt -p; fi | _hook_append
+  fi
 }
 
 build_userdata() {
@@ -124,22 +135,16 @@ build_userdata() {
   # error-check explicitly.
   if [ "$1" = --clone ]; then _clone=1; shift; else _clone= ; fi
   _stash() {
-    mkstash ${debug:+-D} -r $role   \
+    runcli mkstash ${debug:+-D}     \
       ${s_wherein:+-w "$s_wherein"} \
       ${envdir:+-e $envdir}         \
       -n $hostname ${id:+-i $id}    \
-      "$@"
+      -r $role "$@"
   }
   if [ "$stash_from" = iso -o -z "$sign" ]; then
-    LOG_warning Stashing without a signature
-    _stash -o- "$@" || fail mkstash
-  elif [ "$sign" = signify ]; then
-    # Verify with signify -Vz < signed > payload
-    _stash -o "$s_where"/unsigned "$@" || fail mkstash
-    signify -Snz -s "$stash_key" -m "$s_where"/unsigned -x "$s_where"/signed || fail sign
-    cat "$s_where"/signed
+    _stash -s '' -S "$sign" -o- "$@"
   else
-    ...
+    _stash -s "$sign" -o- "$@"
   fi
 }
 
@@ -160,11 +165,11 @@ build_iso() {
     [ -z "$_userdata" ] && fail userdata
     cat "$_userdata" > "$s_where"/payload/stash.tgz
   elif [ "$stash_from" != script-only ]; then
-    mkstash ${debug:+-D} \
+    runcli mkstash ${debug:+-D}     \
       ${s_wherein:+-w "$s_wherein"} \
       ${envdir:+-e $envdir}         \
       ${stash_from:+-f $stash_from} \
-      -o "$s_where"/payload/stash.tgz -O
+      -s '' -S "$sign" -o "$s_where"/payload/stash.tgz -O
   fi
 
   ( cd "$s_where"/payload; find . -type f | tar -cf- -I- ) \

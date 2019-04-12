@@ -1,7 +1,6 @@
 #!sh
 
 role_settings() {
-  on_openbsd || die_unsupported
   role_method public _keys_public
   role_method secret _keys_secret
   keys_public= keys_secret=
@@ -10,14 +9,21 @@ role_settings() {
 
 role_apply() {
   set -e
-  if on_openbsd; then
-    if [ -n "$stash_pubkey" ]; then
+  if [ -n "$stash_pubkey" ]; then
+    case $sign in
+    signify)
       if [ "$stash_pubkey" = "${stash_pubkey#env.$environment/}" \
         -o "$stash_pubkey" = "${stash_pubkey%-stash.pub}" ]; then
         fail Invalid public key
       fi
+      mkdir -p /etc/signify
       stash keys public ${stash_pubkey#env.$loaded_env/} /etc/signify/${stash_pubkey##*/}
-    fi
+      ;;
+
+    gpg)
+      ...
+      ;;
+    esac
   fi
 }
 

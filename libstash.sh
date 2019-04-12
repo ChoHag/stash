@@ -18,6 +18,7 @@ default_environment=dev  # [.X..] ## was default_environment
 APP=                     # [X...] Name for logging ## was APP
 debug=                   # [...X] ## was debug
 cli=                     # [X...] command-line parsing
+cli_extra=               # [...X] options passed with -+ or --set
 domain=                  # [..XX] dns ## was domain
 env=                     # [..X.] Environment reported by loaded settings.sh ## was env
 envdir=                  # [...X] Environment given on the command-line, might be $env or .../env.$env ## was envdir
@@ -128,7 +129,6 @@ fail() { LOG_error "$@"; exit 1; }
 [ "$stash" != "${stash#/}" ] || fail "'stash' must be an absolute path"
 
 atdie() { stash_trap="$stash_trap $*"; }
-trap 'set +e; for c in $stash_trap; do $c; done' ERR
 atexit() { stash_dirty="$stash_dirty $*"; }
 _trap='set +e;
 if [ -n "$debug" ]; then
@@ -137,6 +137,8 @@ else
   for c in $stash_dirty; do $c; done;
 fi'
 trap "$_trap" EXIT
+trap 'set +e; for c in $stash_trap; do $c; done' ERR \
+  || trap 'set +e; for c in $stash_trap; do $c; done; '"$_trap" EXIT
 
 on() { _get_on; echo $s_on; }
 
@@ -168,6 +170,17 @@ cli() {
   fi
   cli="$cli $1"
   eval "cli__$1=\$2"
+}
+cli_extra() {
+  cli ${1%%=*} "${1#*=}"
+  append_var cli_extra ${1%%=*}
+}
+runcli() {
+  local _bin=$1 _extra=
+  shift
+  # TODO: Also include other shared options like -D, -w, etc.?
+  for _extra in $cli_extra; do eval set -- -+ \"$_extra=\$$_extra\" \"\$@\"; done
+  "$_bin" "$@"
 }
 
 stash() {

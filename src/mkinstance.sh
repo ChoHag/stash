@@ -15,7 +15,7 @@ while getopts hD+:c:C:e:f:F:H:i:I:M:n:N:r:s:Tw: _opt; do case "$_opt" in
   h) echo "Don't panic!"; usage;;    # --help
   D) cli debug         true;;        # --debug
 
-  +) cli "${OPTARG%%=*}" "${OPTARG#*=}";; # --set
+  +) cli_extra         "$OPTARG";;    # --set
   c) cli os_clone_from "$OPTARG";;    # --clone-from
   C) cli os_cpu        "$OPTARG";;    # --cpu
   e) cli envdir        "$OPTARG" ws;; # --environment

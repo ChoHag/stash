@@ -39,6 +39,7 @@ stashsrcs=run.sh
 stashlib=libstash.sh libstash-env.sh libstash-role.sh libstash-net.sh libstash-sht.sh
 
 stashdata=                   \
+  partmouse.sh               \
   post-hook.centos.sh        \
   post-hook.deb.sh           \
   post-hook.head.sh          \
@@ -51,7 +52,8 @@ coreroles=            \
   firewall/role.sh    \
   keys/role.sh        \
   network/role.sh     \
-  supplement/role.sh
+  supplement/role.sh  \
+    supplement/zverify
 
 roles=                 \
   crash/role.sh        \

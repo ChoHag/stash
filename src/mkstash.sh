@@ -7,14 +7,14 @@ set -e
 . "$LIBSTASH"/lib/libstash-mk.sh
 APP=mkstash
 
-_withcore=true
-_compression=9
-while getopts hD0123456789e:f:i:n:o:Or:w: _opt; do case "$_opt" in
+_compression=9 _withcore=true _verify=
+while getopts hD0123456789+:e:f:i:n:o:Or:s:S:w: _opt; do case "$_opt" in
   \?) usage;;
   h) echo "Don't panic!"; usage;; # --help
   D) cli debug         true;;      # --debug
   [0-9]) _compression=$_opt;;
 
+  +) cli_extra      "$OPTARG";;    # --set
   e) cli envdir     "$OPTARG" ws;; # --environment
   f) cli stash_from "$OPTARG" ws;; # --stash-from
   i) cli id         "$OPTARG";;    # --id
@@ -22,6 +22,8 @@ while getopts hD0123456789e:f:i:n:o:Or:w: _opt; do case "$_opt" in
   o) cli outfile    "$OPTARG" ws;; # --out
   O) cli _withcore  '';;
   r) cli role       "$OPTARG";;    # --role
+  s) cli sign       "$OPTARG";;    # --sign
+  S) cli _verify    "$OPTARG";;    # --sign
   w) cli s_wherein  "$OPTARG" ws;; # --workdir
 
   # -) --long-argument;;
@@ -126,11 +128,34 @@ chmod 755 "$s_where"/stash/run
   else
     echo environment=$env # default_?
   fi
+  echo sign=${_verify:-$sign}
   echo stash_from=$stash_from
 ) >> "$s_where"/stash/id
+
+sign() {
+  case $sign in
+  '')
+    LOG_warning Stashing without a signature
+    cat
+    ;;
+  signify)
+    local _exe=signify; if on_deb; then _exe=signify-openbsd; fi
+    if want_openbsd; then
+      cat > "$s_where"/unsigned
+      # Verify with signify -Vz <signed >payload
+      $_exe -Snz -s "$stash_key" -m "$s_where"/unsigned -x-
+    else
+      # Verify with zverify verify -Vq -t stash -m- -x -- <s >p
+      zsign $_exe -Sn -s "$stash_key" -m- -x-
+    fi
+    ;;
+  gpg) zsign gpg -abs;; # Verify with zverify gpg --verify -- - <s >p
+  *) die_unsupported sign $sign;;
+  esac || die sign
+}
 
 cd "$s_where"/stash
 [ -n "$outfile" ] && exec > "$outfile"
 find . -mindepth 1 -type f -a \! \( -name \*~ -o -name \*.bak -o -name \#\* \) \
-  | tar -I- -cf - | gzip -c$_compression
+  | tar -I- -cf - | gzip -c$_compression | sign
 LOG_debug Stashed contents are available in "$s_where"/stash

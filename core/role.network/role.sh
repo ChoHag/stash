@@ -19,7 +19,11 @@ role_apply() {
       [ -n "$hostname" ] && printf '/changemehost/s//%s/\nw\n' $hostname | ed -s $f 2>/dev/null || true
       [ -n "$domain"   ] && printf '/changemedomain/s//%s/\nw\n' $domain | ed -s $f 2>/dev/null || true
     done
-    hostname $(cat /etc/myname) # TODO: openbsd only
+    if on_openbsd; then
+      hostname $(cat /etc/myname) || LOG_warning cannot set hostname live
+    elif on_linux; then
+      hostname $(cat /etc/hostname) || LOG_warning cannot set hostname live
+    fi
   fi
 
   local _changed= _early=
