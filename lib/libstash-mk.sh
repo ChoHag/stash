@@ -230,28 +230,29 @@ boot_2() {
       ${os_network:+-n"$os_network"}
   fi
 
-  if [ "$stash_from" = iso ]; then
-    hvm_wait "$@"
-  else
-    if [ -n "$os_clone_from" ]; then hvm_clone $_vmname "$os_clone_from"; fi
-    _stashname=stash-$_vmname
+  if [ "$stash_from" != iso ]; then
+    if [ -n "$os_clone_from" ]; then hvm_clone $_vmname "$os_clone_from" || die clone; fi
+    _stashname=stash-$_vmname _waitopt=
     case "$stash_from" in
-    usb*)
-      _stashname=$_stashname.disc
-      case "$stash_from" in
-      usb:*) hvm_upload $_stashname <${stash_from#usb:};;
-      usb)
-        root "$(which mkstashfs)" <"$_userdata" >"$s_where"/usb.img || die mkstashfs
-        hvm_upload $_stashname <"$s_where"/usb.img
-        ;;
-      *) die undefined;;
-      esac
-      hvm_wait "$@" -u $_stashname
+    cd)
+      _waitopt=$_stashname.iso
+      mkdir "$s_where"/stashcd
+      mkhybrid -aro "$s_where"/cd.img /stash.tgz="$_userdata"
+      hvm_upload $_stashname.iso <"$s_where"/cd.img
+      ;;
+    usb:*)
+      _waitopt=-u\ $_stashname.fs
+      hvm_upload $_stashname.fs <${stash_from#usb:};;
+    usb)
+      _waitopt=-u\ $_stashname.fs
+      root "$(which mkstashfs)" <"$_userdata" >"$s_where"/usb.img || die mkstashfs
+      hvm_upload $_stashname.fs <"$s_where"/usb.img
       ;;
     http:*|https:*) die undefined;;
     pxe) die undefined;;
     *);;
     esac
   fi
+  hvm_wait "$@" $_waitopt
   hvm_launch "$@"
 }

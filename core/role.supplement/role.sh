@@ -8,31 +8,36 @@ role_settings() {
 role_apply() {
   if [ -n "$supplement_searched" ] || ! on_firsttime; then return; fi
   role var searched true
+  case $(on) in
+  openbsd)
+    _cddev=/dev/cd0a
+    _usbdev=/dev/$(dmesg | grep -E ^sd[0-9]+: | cut -d: -f1 | tail -n1)i
+    _mount='mount -r'
+    ;;
+  debian|devuan|centos)
+    _cddev=/dev/cdrom
+    _usbdev=/dev/disk/by-path/*-usb-*:?-part1
+    [ "$_usbdev" = "${_usbdev#* }" ] || fail Too many usb devices
+    _mount='mount -o ro'
+    ;;
+  esac
+
+  _try() {
+    _r=
+    if $_mount $1 /mnt; then
+      if _verify_stash </mnt/stash.tgz
+      then _r=0; else _r=$?; fi
+      umount /mnt
+      die verify stash supplement
+    fi
+  }
+
   for _from in $(echo "$stash_from" | tr , ' '); do
     LOG_info Looking for stash from $_from
     case $_from in
-    usb)
-      case $(on) in
-      openbsd)
-        _usbdev=/dev/$(dmesg | grep -E ^sd[0-9]+: | cut -d: -f1 | tail -n1)
-        _usbpart=${_usbdev}i
-        ;;
-      debian|devuan|centos)
-        _usbdev=/dev/disk/by-path/*-usb-*:?
-        _usbpart=${_usbdev}-part1
-        [ "$_usbdev" = "${_usbdev#* }" ] || fail Too many usb devices
-        ;;
-      esac
-      _r=
-      if mount -r $_usbpart /mnt; then
-        if _verify_stash </mnt/stash.tgz
-        then _r=0; else _r=$?; fi
-        umount /mnt
-      fi
-      [ -z "$_r" ] || return $_r
-      ;;
-
-    *) die undefined;;
+    cd)  _try $_cddev;;
+    usb) _try $_usbdev;;
+    *)   die unsupported;;
     esac
   done
 }

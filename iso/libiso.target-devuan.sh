@@ -77,7 +77,19 @@ fiddle_autoinstall() { # inc. layout, halt
 fiddle_hooks() {
   [ -n "$iso_payload" ] && cp "$iso_payload" "$s_where"/ramdiscd/payload
   [ -n "$iso_pre_hook" ] && cp "$iso_pre_hook" "$s_where"/ramdiscd/mkautoiso-prehook.sh
-  [ -n "$iso_post_hook" ] && cp "$iso_post_hook" "$s_where"/ramdiscd/mkautoiso-posthook.sh
+  cat >"$s_where"/ramdiscs/mkautoiso-posthook.sh <<EOF
+#!/bin/sh
+if [ -n "$proxy" ]; then
+  touch \$_top/etc/environment
+  for _p in ftp http https; do
+    echo g/\${_p}_proxy=/d
+    echo \\\$a
+    echo \${_p}_proxy=$proxy
+    echo .
+  done | ed -s \$_top/etc/environment
+fi
+EOF
+  [ -n "$iso_post_hook" ] && cat "$iso_post_hook" >>"$s_where"/ramdiscd/mkautoiso-posthook.sh
   touch "$s_where"/ramdiscd/mkautoiso-{pre,post}hook.sh
   root chmod 755 "$s_where"/ramdiscd/mkautoiso-{pre,post}hook.sh
 }

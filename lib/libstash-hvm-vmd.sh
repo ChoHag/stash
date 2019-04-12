@@ -35,7 +35,7 @@ hvm_launch() {
       bridged:*) _net="-b ${_network#*:}";;
     esac; fi
     hvm_declare $_name $_net -d ${hvm_dir:+$hvm_dir/}$_name.0 $_ram
-    _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_dir:+$hvm_dir/}tmp/$_extra"}
+    _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_tmp:-/tmp}/$_extra"}
     ;;
   01)
     local _net=
@@ -46,10 +46,10 @@ hvm_launch() {
     esac; fi
     _hvmd_vmctl start $_name $_net ${_ram:+-m "$_ram"} \
       -d ${hvm_dir:+$hvm_dir/}$_name.0             \
-      ${_extra:+$_usbo "${hvm_dir:+$hvm_dir/}tmp/$_extra"}
+      ${_extra:+$_usbo "${hvm_tmp:-/tmp}/$_extra"}
     ;;
   10)
-    _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_dir:+$hvm_dir/}tmp/$_extra"};;
+    _hvmd_launch_declared $_name $_usbf ${_extra:+"${hvm_tmp:-/tmp}/$_extra"};;
   11)
     _hvmd_launch_transient $_name;;
   esac || die launching $_name
@@ -111,17 +111,17 @@ hvm_upload() {
   local _name=$1 _src=$2
   if [ -z "$_src" -o x$_src = x'-' ]; then
     if [ -n "$hvm_remote" ]; then
-      ssh -C $hvm_remote cat \> "\"${hvm_dir:+$hvm_dir/}tmp/$_name\""
+      ssh -C $hvm_remote cat \> "\"${hvm_tmp:-/tmp}/$_name\""
     else
-      cat > "${hvm_dir:+$hvm_dir/}tmp/$_name"
+      cat > "${hvm_tmp:-/tmp}/$_name"
     fi
   else
     if [ -n "$hvm_remote" ]; then
-      scp -C "$_src" $hvm_remote:"${hvm_dir+$hvm_dir/}tmp/$_name"
+      scp -C "$_src" $hvm_remote:"${hvm_tmp:-/tmp}/$_name"
     else
-      cp "$_src" "${hvm_dir+$hvm_dir/}tmp/$_name"
+      cp "$_src" "${hvm_tmp:-/tmp}/$_name"
     fi
-  fi || die uploading to "${hvm_remote:+$hvm_remote:}${hvm_dir:+$hvm_dir/}tmp/$_name"
+  fi || die uploading to "${hvm_remote:+$hvm_remote:}${hvm_tmp:-/tmp}/$_name"
 }
 
 hvm_wait() {
